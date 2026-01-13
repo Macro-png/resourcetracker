@@ -143,7 +143,8 @@
   <!-- Toast -->
   <div id="toast" class="toast" hidden aria-live="polite"></div>
 
-
+  <!-- Hidden file input for import -->
+  <input id="import-file" type="file" accept="application/json" hidden />
 
   <!-- Templates -->
   <template id="resource-template">
@@ -207,7 +208,45 @@
           .catch(err => console.warn('SW register failed', err));
       }
 
+      // Export / Import handlers
+      const exportBtn = document.getElementById('export-btn');
+      const importBtn = document.getElementById('import-btn');
+      const importFile = document.getElementById('import-file');
 
+      exportBtn.addEventListener('click', () => {
+        try {
+          const data = localStorage.getItem('dndTrackerState') || '{}';
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'dnd-tracker-export.json';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          alert('Export failed: ' + err.message);
+        }
+      });
+
+      importBtn.addEventListener('click', () => importFile.click());
+
+      importFile.addEventListener('change', async (ev) => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          if (!parsed || !Array.isArray(parsed.characters)) {
+            throw new Error('Invalid file format');
+          }
+          localStorage.setItem('dndTrackerState', JSON.stringify(parsed));
+          location.reload();
+        } catch (err) {
+          alert('Import failed: ' + err.message);
+        }
+      });
 
       // Modal: Add character (works alongside existing prompt-based flow)
       const addBtn = document.getElementById('add-character-btn');
