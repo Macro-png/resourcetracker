@@ -260,10 +260,10 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 /* Make the UI more phone-friendly */
 @media (max-width: 480px) {
   body { 
-    padding-left: calc(0.6rem + var(--safe-inset-left));
-    padding-right: calc(0.6rem + var(--safe-inset-right));
-    padding-top: calc(0.6rem + var(--safe-inset-top));
-    padding-bottom: calc(0.6rem + var(--safe-inset-bottom));
+    padding-left: var(--safe-inset-left, 0px);
+    padding-right: var(--safe-inset-right, 0px);
+    padding-top: var(--safe-inset-top, 0px);
+    padding-bottom: var(--safe-inset-bottom, 0px);
   }
   main { max-width: 100%; margin-top: 0.6rem; }
 
