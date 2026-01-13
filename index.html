@@ -182,7 +182,24 @@
     // Small UI glue that uses the global state defined in app.js
     (function () {
       // Service worker registration and PWA install prompt handling
+      let deferredPrompt;
+      const installBtn = document.getElementById('pwa-install-btn');
 
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.hidden = false;
+        installBtn.removeAttribute('aria-hidden');
+      });
+
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installBtn.hidden = true;
+        installBtn.setAttribute('aria-hidden', 'true');
+      });
 
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('pwa/service-worker.js')
