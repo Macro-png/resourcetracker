@@ -354,6 +354,18 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
 .concentration-banner{ background: linear-gradient(90deg, #b91c1c, #f97316); color:white; padding:0.8rem 1rem; border-radius:12px; margin-top:0.5rem; font-weight:800; text-align:center; box-shadow:0 6px 24px rgba(0,0,0,0.45); font-size:1.1rem; position:sticky; top:0; z-index:20; }
 
+/* Global concentration border: faint inset border while concentrating */
+body.concentrating::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 6px rgba(202, 24, 24, 0.4);
+  border-radius: 12px;
+  transition: box-shadow .18s ease, opacity .18s ease;
+  z-index: 10; /* below toasts and overlays */
+}
+
 
 /* -----------------------------
    NAV / BACK

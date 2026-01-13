@@ -170,6 +170,10 @@ document
   const c = getSelectedCharacter();
   if (!c) return;
 
+  // Indicate concentration at the global level (subtle border around the screen)
+  const conc = getConcentration(c);
+  document.body.classList.toggle('concentrating', !!conc);
+
   document.getElementById("character-name").textContent = c.name;
 
   // HP UI: current/max, temp badge and bar
