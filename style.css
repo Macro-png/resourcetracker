@@ -257,63 +257,64 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
 
 
-/* Make the UI mobile-first (apply phone-friendly styles globally) */
-/* Apply safe-area insets and slightly smaller base font so desktop matches iPhone layout */
-body { 
-  padding-left: var(--safe-inset-left, 0px);
-  padding-right: var(--safe-inset-right, 0px);
-  padding-top: calc(var(--safe-inset-top, 0px) + 4px);
-  padding-bottom: calc(var(--safe-inset-bottom, 0px) + 4px);
-  font-size: 15px; /* slightly smaller base font to fit more content */
+/* Make the UI more phone-friendly */
+@media (max-width: 480px) {
+  body { 
+    padding-left: var(--safe-inset-left, 0px);
+    padding-right: var(--safe-inset-right, 0px);
+    padding-top: calc(var(--safe-inset-top, 0px) + 4px);
+    padding-bottom: calc(var(--safe-inset-bottom, 0px) + 4px);
+    font-size: 15px; /* slightly smaller base font to fit more content */
+  }
+  main { max-width: 100%; margin-top: 0.4rem; padding: 0 0.25rem; }
+
+  /* Slightly denser cards for more vertical space */
+  .card { padding: 0.65rem; border-radius: 10px; }
+  .card.small { padding: 0.5rem; }
+
+  /* Compact header and title */
+  .app-header { padding: 0.5rem; }
+  .app-header h1{ font-size: 0.95rem; }
+  .character-title { font-size: 1.4rem; }
+
+  /* HP compacting */
+  .hp-card { padding: 0.6rem; }
+  .hp-current { font-size: 1.3rem; }
+  .hp-max-sub { font-size: 0.8rem; }
+  .hp-bar { height: 10px; }
+  .hp-bar-fill { transition: width .18s ease; }
+
+  .hp-controls { gap: 0.4rem; align-items:center; }
+  .hp-amount-label { flex: 1; min-width: 72px; }
+  .hp-input { padding: 0.4rem 0.5rem; }
+
+  .hp-action-buttons { display:flex; gap:0.45rem; }
+  .hp-action-buttons .hp-btn { padding: 0.55rem 0.8rem; font-size: 0.95rem; min-width: 84px; }
+
+  /* On very narrow screens, stack the action buttons to avoid overflow */
+  @media (max-width: 380px) {
+    .hp-action-buttons { flex-direction: column; width: 100%; }
+    .hp-action-buttons .hp-btn { width: 100%; }
+  }
+
+  /* Slightly smaller visual elements to increase density */
+  .avatar { width: 36px; height: 36px; border-radius: 8px; font-size: 0.85rem; }
+  .slot-box { width: 34px; height: 34px; }
+  .spellslot-item { min-height: 56px; }
+  #character-list li { padding: 0.8rem; }
+
+  /* Condense condition chips */
+  .condition-btn{ padding: 0.45rem 0.5rem; font-size: 0.88rem; }
+
+  /* Slightly shorter buttons for better vertical rhythm */
+  button, .small-btn { min-height: 48px; padding: 0.6rem 0.8rem; }
+
+  .modal-content { width: 100%; height: 100%; border-radius: 0; max-width: none; padding: 0.9rem; overflow: auto; align-items: flex-start; }
+
+  .spellslot-controls { gap: 0.35rem; justify-content:flex-start; }
+  .slot-center { justify-content:flex-start; padding-left:8px; }
+  .slot-toggle { padding: 6px; }
 }
-main { max-width: 100%; margin-top: 0.4rem; padding: 0 0.25rem; }
-
-/* Slightly denser cards for more vertical space */
-.card { padding: 0.65rem; border-radius: 10px; }
-.card.small { padding: 0.5rem; }
-
-/* Compact header and title */
-.app-header { padding: 0.5rem; }
-.app-header h1{ font-size: 0.95rem; }
-.character-title { font-size: 1.4rem; }
-
-/* HP compacting */
-.hp-card { padding: 0.6rem; }
-.hp-current { font-size: 1.3rem; }
-.hp-max-sub { font-size: 0.8rem; }
-.hp-bar { height: 10px; }
-.hp-bar-fill { transition: width .18s ease; }
-
-.hp-controls { gap: 0.4rem; align-items:center; }
-.hp-amount-label { flex: 1; min-width: 72px; }
-.hp-input { padding: 0.4rem 0.5rem; }
-
-.hp-action-buttons { display:flex; gap:0.45rem; }
-.hp-action-buttons .hp-btn { padding: 0.55rem 0.8rem; font-size: 0.95rem; min-width: 84px; }
-
-/* On very narrow screens, stack the action buttons to avoid overflow */
-@media (max-width: 380px) {
-  .hp-action-buttons { flex-direction: column; width: 100%; }
-  .hp-action-buttons .hp-btn { width: 100%; }
-}
-
-/* Slightly smaller visual elements to increase density */
-.avatar { width: 36px; height: 36px; border-radius: 8px; font-size: 0.85rem; }
-.slot-box { width: 34px; height: 34px; }
-.spellslot-item { min-height: 56px; }
-#character-list li { padding: 0.8rem; }
-
-/* Condense condition chips */
-.condition-btn{ padding: 0.45rem 0.5rem; font-size: 0.88rem; }
-
-/* Slightly shorter buttons for better vertical rhythm */
-button, .small-btn { min-height: 48px; padding: 0.6rem 0.8rem; }
-
-.modal-content { width: 100%; height: 100%; border-radius: 0; max-width: none; padding: 0.9rem; overflow: auto; align-items: flex-start; }
-
-.spellslot-controls { gap: 0.35rem; justify-content:flex-start; }
-.slot-center { justify-content:flex-start; padding-left:8px; }
-.slot-toggle { padding: 6px; }
 
 /* Extra small tweaks for very narrow phones */
 @media (max-width: 360px) {
