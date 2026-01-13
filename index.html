@@ -411,22 +411,29 @@
         const v = Math.max(0, parseInt(hpAmountInput.value, 10) || 0);
         if (!v) return;
         window.heal && window.heal(v);
+        // clear the amount input after use
+        hpAmountInput.value = '';
       });
 
       document.getElementById('hp-subtract').addEventListener('click', () => {
         const v = Math.max(0, parseInt(hpAmountInput.value, 10) || 0);
         if (!v) return;
         window.applyDamage && window.applyDamage(v);
+        // clear the amount input after use
+        hpAmountInput.value = '';
       });
 
       document.getElementById('temp-hp-set').addEventListener('click', () => {
-        const v = Math.max(0, parseInt(document.getElementById('temp-hp-input').value, 10) || 0);
+        const tempInput = document.getElementById('temp-hp-input');
+        const v = Math.max(0, parseInt(tempInput.value, 10) || 0);
         const st = window.state || {};
         const c = (st.characters || []).find(ch => ch.id === st.selectedCharacterId);
         if (!c) { alert('No character selected'); return; }
         c.tempHP = v;
         window.saveState && window.saveState();
         window.renderSession && window.renderSession();
+        // clear the temp HP input after use
+        tempInput.value = '';
       });
 
       // Rest buttons: call global rest handlers and provide feedback + hp bar flash
