@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+
+  <title>D&D Resource Tracker</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="pwa/manifest.json" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Resource Tracker</h1>
+    <div class="toolbar">
+      <button id="export-btn" aria-label="Export data">⬇ Export</button>
+      <button id="import-btn" aria-label="Import data">⬆ Import</button>
+      <button id="pwa-install-btn" hidden aria-hidden="true">Install</button>
+    </div>
+  </header>
+
+  <!-- CHARACTER LIST SCREEN -->
+  <main id="character-list-screen" class="screen">
+    <h2 class="sr-only">Characters</h2>
+
+    <ul id="character-list" class="list"></ul>
+
+    <button id="add-character-btn" class="primary-btn" aria-haspopup="dialog">
+      + Add Character
+    </button>
+  </main>
+
+  <!-- SESSION SCREEN -->
+  <main id="session-screen" class="screen" hidden>
+    <div class="session-toprow">
+      <button id="back-btn" class="link-btn">← Back</button>
+      <div class="session-title-block">
+        <h2 id="character-name" class="character-title"></h2>
+        <button id="concentration-toggle" class="concentration-under-btn" aria-pressed="false" aria-label="Toggle concentration">Concentrate</button>
+      </div>
+    </div>
+
+    <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive">Concentrating</div>
+
+    <!-- HP CARD -->
+    <section class="card hp-card">
+      <div class="hp-header">
+        <div class="hp-values">
+          <div id="hp-display" class="hp-current" aria-live="polite">0 / 0</div>
+          <div class="hp-max-sub">HP</div>
+        </div>
+        <div id="hp-temp-badge" class="hp-temp-badge" hidden>Temp 0</div>
+      </div>
+
+      <div class="hp-bar" aria-hidden="true">
+        <div id="hp-bar-fill" class="hp-bar-fill" style="width:100%"></div>
+      </div>
+
+      <div class="row hp-controls" style="align-items:center; margin-top:0.6rem; gap:0.6rem;">
+        <label class="hp-amount-label">
+          Amount
+          <input id="hp-update-amount" type="number" min="0" value="1" class="hp-input" />
+        </label>
+        <div class="hp-action-buttons">
+          <button id="hp-subtract" class="hp-btn hp-btn-damage">Damage</button>
+          <button id="hp-add" class="hp-btn hp-btn-heal">Heal</button>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:center; margin-top:0.6rem; gap:0.6rem;">
+        <label style="flex:1;">
+          Temp HP
+          <input id="temp-hp-input" type="number" min="0" value="0" class="hp-input" />
+        </label>
+        <button id="temp-hp-set" class="hp-btn">Set Temp HP</button>
+      </div>
+    </section>
+
+    <!-- SPELL SLOTS -->
+    <section class="card">
+      <h3>Spell Slots</h3>
+      <div id="spellslots-container"></div>
+      <button id="add-spellslot-btn" class="link-btn">+ Add Spell Slot</button>
+    </section>
+
+    <!-- RESOURCES -->
+    <section class="card">
+      <h3>Resources</h3>
+      <div id="resources-container"></div>
+      <button id="add-resource-btn" class="link-btn">+ Add Resource</button>
+    </section>
+
+    <!-- CONDITIONS -->
+    <section class="card">
+      <h3>Conditions</h3>
+      <div id="status-container" aria-live="polite"></div>
+
+      <!-- Quick condition toggles (standard 5e conditions) -->
+      <div id="condition-grid" class="condition-grid" aria-label="Standard conditions"></div>
+    </section>
+
+    <!-- REST BUTTONS -->
+    <section class="row card actions">
+      <button id="short-rest" class="rest-btn primary-btn">Short Rest</button>
+      <button id="long-rest" class="rest-btn primary-btn">Long Rest</button>
+    </section>
+  </main>
+
+  <!-- MODALS -->
+  <div id="character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
+    <div class="modal-content">
+      <h3 id="character-modal-title">Add Character</h3>
+      <form id="character-form">
+        <label>
+          Name
+          <input id="character-form-name" name="name" required />
+        </label>
+
+        <label>
+          Max HP
+          <input id="character-form-maxhp" name="maxhp" type="number" min="1" value="10" required />
+        </label>
+
+        <label>
+          Full caster level (full spellcaster classes)
+          <input id="character-form-fullcaster" name="fullcaster" type="number" min="0" max="20" value="0" />
+        </label>
+
+        <label>
+          Half caster level (paladin / ranger, counts as half)
+          <input id="character-form-halfcaster" name="halfcaster" type="number" min="0" max="20" value="0" />
+        </label>
+
+        <label>
+          Pact magic level (Warlock level)
+          <input id="character-form-pactlevel" name="pactlevel" type="number" min="0" max="20" value="0" />
+        </label>
+
+        <div id="character-form-error" class="form-error" hidden></div>
+
+        <div class="row">
+          <button type="submit" class="primary-btn" id="character-save">Save</button>
+          <button type="button" id="character-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+
+
+  <!-- Toast -->
+  <div id="toast" class="toast" hidden aria-live="polite"></div>
+
+  <!-- Hidden file input for import -->
+  <input id="import-file" type="file" accept="application/json" hidden />
+
+  <!-- Templates -->
+  <template id="resource-template">
+    <div class="spellslot-item card small resource-item">
+      <button class="small-cross slot-remove" aria-label="Remove resource">✕</button>
+      <div class="slot-row">
+        <div class="slot-left">
+          <div class="resource-label" data-key="label"></div>
+        </div>
+        <div class="slot-center">
+          <div class="spellslot-controls resource-controls" data-key="controls"></div>
+        </div>
+        <div class="slot-right">
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="spellslot-template">
+    <div class="spellslot-item card small">
+      <button class="small-cross slot-remove" aria-label="Remove spell slots">✕</button>
+      <div class="slot-row">
+        <div class="slot-left">
+          <div class="spellslot-label" data-key="level"></div>
+        </div>
+        <div class="slot-center">
+          <div class="spellslot-controls" data-key="controls"></div>
+        </div>
+        <div class="slot-right">
+        </div>
+      </div>
+    </div>
+  </template>    
+
+  <script>
+    // Small UI glue that uses the global state defined in app.js
+    (function () {
+      // Service worker registration and PWA install prompt handling
+      let deferredPrompt;
+      const installBtn = document.getElementById('pwa-install-btn');
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.hidden = false;
+        installBtn.removeAttribute('aria-hidden');
+      });
+
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installBtn.hidden = true;
+        installBtn.setAttribute('aria-hidden', 'true');
+      });
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('pwa/service-worker.js')
+          .then(() => console.log('Service worker registered'))
+          .catch(err => console.warn('SW register failed', err));
+      }
+
+      // Export / Import handlers
+      const exportBtn = document.getElementById('export-btn');
+      const importBtn = document.getElementById('import-btn');
+      const importFile = document.getElementById('import-file');
+
+      exportBtn.addEventListener('click', () => {
+        try {
+          const data = localStorage.getItem('dndTrackerState') || '{}';
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'dnd-tracker-export.json';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          alert('Export failed: ' + err.message);
+        }
+      });
+
+      importBtn.addEventListener('click', () => importFile.click());
+
+      importFile.addEventListener('change', async (ev) => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          if (!parsed || !Array.isArray(parsed.characters)) {
+            throw new Error('Invalid file format');
+          }
+          localStorage.setItem('dndTrackerState', JSON.stringify(parsed));
+          location.reload();
+        } catch (err) {
+          alert('Import failed: ' + err.message);
+        }
+      });
+
+      // Modal: Add character (works alongside existing prompt-based flow)
+      const addBtn = document.getElementById('add-character-btn');
+      const modal = document.getElementById('character-modal');
+      const form = document.getElementById('character-form');
+      const cancel = document.getElementById('character-cancel');
+
+      // Open modal and focus the name field
+      addBtn.addEventListener('click', () => {
+        modal.hidden = false;
+        document.getElementById('character-form-name').focus();
+      });
+
+      // Close modal handlers & ESC key support
+      cancel.addEventListener('click', () => {
+        modal.hidden = true;
+        addBtn.focus();
+      });
+
+      modal.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          modal.hidden = true;
+          addBtn.focus();
+        }
+      });
+
+      // Form validation and submission with feedback
+      const nameInput = document.getElementById('character-form-name');
+      const maxInput = document.getElementById('character-form-maxhp');
+      const saveButton = document.getElementById('character-save');
+      const formError = document.getElementById('character-form-error');
+      const toast = document.getElementById('toast');
+
+      function validateForm(){
+        formError.hidden = true;
+        const name = nameInput.value.trim();
+        const max = parseInt(maxInput.value, 10);
+        const full = parseInt(document.getElementById('character-form-fullcaster').value, 10);
+        const half = parseInt(document.getElementById('character-form-halfcaster').value, 10);
+        const pact = parseInt(document.getElementById('character-form-pactlevel').value, 10);
+
+        if (!name) {
+          formError.textContent = 'Please enter a character name.';
+          formError.hidden = false;
+          saveButton.disabled = true;
+          return false;
+        }
+
+        if (!Number.isInteger(max) || max < 1) {
+          formError.textContent = 'Max HP must be a positive number.';
+          formError.hidden = false;
+          saveButton.disabled = true;
+          return false;
+        }
+
+        if (!Number.isInteger(full) || full < 0 || full > 20) {
+          formError.textContent = 'Full caster level must be between 0 and 20.';
+          formError.hidden = false;
+          saveButton.disabled = true;
+          return false;
+        }
+
+        if (!Number.isInteger(half) || half < 0 || half > 20) {
+          formError.textContent = 'Half caster level must be between 0 and 20.';
+          formError.hidden = false;
+          saveButton.disabled = true;
+          return false;
+        }
+
+        if (!Number.isInteger(pact) || pact < 0 || pact > 20) {
+          formError.textContent = 'Pact magic level must be between 0 and 20.';
+          formError.hidden = false;
+          saveButton.disabled = true;
+          return false;
+        }
+
+        saveButton.disabled = false;
+        return true;
+      }
+
+      nameInput.addEventListener('input', validateForm);
+      maxInput.addEventListener('input', validateForm);
+      document.getElementById('character-form-fullcaster').addEventListener('input', validateForm);
+      document.getElementById('character-form-halfcaster').addEventListener('input', validateForm);
+      document.getElementById('character-form-pactlevel').addEventListener('input', validateForm);
+      validateForm();
+
+      function showToast(msg, ms = 1600){
+        toast.textContent = msg;
+        toast.hidden = false;
+        toast.classList.add('show');
+        setTimeout(()=>{ toast.classList.remove('show'); toast.hidden = true; }, ms);
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!validateForm()) return;
+
+        const name = nameInput.value.trim();
+        const maxHP = parseInt(maxInput.value, 10) || 10;
+        const full = parseInt(document.getElementById('character-form-fullcaster').value, 10) || 0;
+        const half = parseInt(document.getElementById('character-form-halfcaster').value, 10) || 0;
+        const pact = parseInt(document.getElementById('character-form-pactlevel').value, 10) || 0;
+
+        const spellSlots = window.buildSpellSlotsFromCasterInfo ? window.buildSpellSlotsFromCasterInfo(full, half, pact) : [];
+
+        const newCharacter = {
+          id: crypto.randomUUID(),
+          name,
+          maxHP,
+          currentHP: maxHP,
+          tempHP: 0,
+          deathSaves: { success: 0, failure: 0 },
+          spellSlots,
+          resources: [],
+          statuses: [],
+          // store caster breakdown for later edits
+          caster: { full, half, pact }
+        };
+
+        window.state = window.state || { characters: [] };
+        window.state.characters.push(newCharacter);
+        window.saveState && window.saveState();
+        window.renderCharacterList && window.renderCharacterList();
+
+        // Close and reset form
+        modal.hidden = true;
+        form.reset();
+        saveButton.disabled = true;
+        addBtn.focus();
+
+        // Highlight, auto-open and scroll to new list item
+        setTimeout(() => {
+          const li = document.querySelector(`[data-id="${newCharacter.id}"]`);
+          if (li){
+            li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            li.classList.add('highlight');
+            // Auto-open the new character
+            li.click();
+            setTimeout(()=> li.classList.remove('highlight'), 1500);
+          }
+        }, 50);
+
+        // Build a compact slot summary for feedback
+        const slotSummary = newCharacter.spellSlots.length ? newCharacter.spellSlots.map(s => `${s.level}L:${s.max}${s.pact ? ' (pact)' : ''}`).join(', ') : 'No spell slots';
+
+        showToast(`Added '${newCharacter.name}' and opened character — ${slotSummary}`);
+      });
+
+      // HP updater wiring: add/subtract amount and set temporary HP
+      const hpAmountInput = document.getElementById('hp-update-amount');
+      document.getElementById('hp-add').addEventListener('click', () => {
+        const v = Math.max(0, parseInt(hpAmountInput.value, 10) || 0);
+        if (!v) return;
+        window.heal && window.heal(v);
+      });
+
+      document.getElementById('hp-subtract').addEventListener('click', () => {
+        const v = Math.max(0, parseInt(hpAmountInput.value, 10) || 0);
+        if (!v) return;
+        window.applyDamage && window.applyDamage(v);
+      });
+
+      document.getElementById('temp-hp-set').addEventListener('click', () => {
+        const v = Math.max(0, parseInt(document.getElementById('temp-hp-input').value, 10) || 0);
+        const st = window.state || {};
+        const c = (st.characters || []).find(ch => ch.id === st.selectedCharacterId);
+        if (!c) { alert('No character selected'); return; }
+        c.tempHP = v;
+        window.saveState && window.saveState();
+        window.renderSession && window.renderSession();
+      });
+
+      // Rest buttons: call global rest handlers and provide feedback + hp bar flash
+      document.getElementById('short-rest').addEventListener('click', () => {
+        if (!confirm || (typeof confirm === 'function' && !confirm('Take a short rest?'))){
+          // still allow quick short rest without confirmation on some environments
+          // but proceed after user confirms
+        }
+        window.shortRest && window.shortRest();
+        showToast('Short rest: restored short-rest resources and slots');
+        const fill = document.getElementById('hp-bar-fill');
+        if (fill){ fill.classList.add('hp-bar-flash'); setTimeout(()=>fill.classList.remove('hp-bar-flash'), 700); }
+      });
+
+      document.getElementById('long-rest').addEventListener('click', () => {
+        if (!confirm('Take a long rest? This will restore HP and most resources.')) return;
+        window.longRest && window.longRest();
+        showToast('Long rest: HP and long-rest resources restored');
+        const fill = document.getElementById('hp-bar-fill');
+        if (fill){ fill.classList.add('hp-bar-flash'); setTimeout(()=>fill.classList.remove('hp-bar-flash'), 900); }
+      });
+
+      // Back to list
+      document.getElementById('back-btn').addEventListener('click', (e) => {
+        // existing handler in app.js will also run; this is just defensive
+      });
+    })();
+  </script>
+
+  <script src="app.js"></script>
+</body>
+</html>

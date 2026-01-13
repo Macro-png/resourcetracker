@@ -1,0 +1,400 @@
+/* -----------------------------
+   RESET / BASE
+------------------------------ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: #121212;
+  color: #f5f5f5;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+/* -----------------------------
+   TYPOGRAPHY
+------------------------------ */
+
+h1 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: #d0d0d0;
+}
+
+p {
+  font-size: 1.1rem;
+}
+
+/* -----------------------------
+   LAYOUT
+------------------------------ */
+
+main {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* -----------------------------
+   BUTTONS
+------------------------------ */
+
+button {
+  background-color: #1e1e1e;
+  color: #ffffff;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  min-height: 44px; /* iOS tap target */
+}
+
+button:active {
+  background-color: #333;
+}
+
+button:disabled {
+  opacity: 0.5;
+}
+
+/* Primary action */
+#add-character-btn {
+  width: 100%;
+  margin-top: 1rem;
+  font-size: 1.1rem;
+}
+
+/* -----------------------------
+   CARDS
+------------------------------ */
+
+.card {
+  background-color: #1a1a1a;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* -----------------------------
+   CHARACTER LIST
+------------------------------ */
+
+#character-list {
+  list-style: none;
+}
+
+#character-list li {
+  background-color: #1a1a1a;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  border: 1px solid #2a2a2a;
+}
+
+#character-list li:active {
+  background-color: #2a2a2a;
+}
+
+/* -----------------------------
+   HP DISPLAY
+------------------------------ */
+
+#hp-display {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* -----------------------------
+   RESOURCES / SPELL SLOTS
+------------------------------ */
+
+.resource,
+.spell-slot,
+.spellslot-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.resource:last-child,
+.spell-slot:last-child,
+.spellslot-item:last-child {
+  border-bottom: none;
+}
+
+.resource-name {
+  font-size: 1rem;
+}
+
+.resource-controls button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+/* Pact / Warlock visual accent 
+.spellslot-item.pact-slot {
+  border-left: 4px solid #7c3aed;
+  background: linear-gradient(90deg, rgba(124,58,237,0.04), rgba(17,11,46,0.02));
+}
+*/
+
+.pact-badge {
+  margin-left: 0.5rem;
+  color: #c7b3ff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display:inline-block;
+}
+
+/* Spell slot controls and tappable toggles */
+.spellslot-controls { display:flex; gap:0.28rem; align-items:center; }
+.slot-toggle { display:inline-flex; align-items:center; justify-content:center; padding:4px; border-radius:8px; background:transparent; cursor:pointer; touch-action:manipulation; }
+.slot-toggle .slot-checkbox { width:0px; height:20px; margin:0; accent-color:#7c3aed; cursor:pointer; opacity:0; position:relative; z-index:1; }
+.slot-toggle .slot-box { display:inline-block; width:30px; height:30px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); background:transparent; transition:all .12s ease; box-sizing:border-box; pointer-events:none; }
+.slot-checkbox:checked + .slot-box { background: #7c3aed; border-color: #6d28d9; box-shadow: 0 6px 18px rgba(124,58,237,0.18); }
+.slot-toggle:active { transform: scale(0.98); }
+
+/* Slot row: label left, controls centered, remove cross right */
+.slot-row { display:flex; align-items:center; gap:1rem; }
+ .lot-left-placeholder { /* used to preserve left spacing if needed */ width:120px; flex: 0 0 120px; }
+.slot-left { width: 120px; text-align:left; padding-right:0.6rem; flex: 0 0 120px; }
+.slot-center { display:flex; align-items:center; justify-content:center; flex:1; }
+.slot-right { width:44px; display:flex; align-items:center; justify-content:flex-end; flex: 0 0 44px; padding-right:6px; }
+.spellslot-item { position: relative; min-height:56px; }
+.spellslot-label { font-weight:800; font-size:0.98rem; }
+.spellslot-controls { display:flex; gap:0.6rem; align-items:center; justify-content:center; }
+
+/* Remove cross positioned at the top-right corner of the card */
+.spellslot-item .slot-remove { position:absolute; top:8px; right:8px; background:transparent; border:none; color:#ffb4b4; font-size:0.95rem; width:32px; height:32px; padding:4px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; z-index:10; }
+.spellslot-item .slot-remove:active { opacity:0.85; transform:translateY(1px); }
+.spellslot-item .slot-remove:focus { outline: 3px solid rgba(255,180,180,0.16); }
+
+/* Resources should use the same remove placement and label/value styling as spell slots */
+.resource-item .slot-remove { position:absolute; top:8px; right:8px; background:transparent; border:none; color:#ffb4b4; font-size:0.95rem; width:32px; height:32px; padding:4px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; z-index:10; }
+.resource-item .slot-remove:active { opacity:0.85; transform:translateY(1px); }
+.resource-item .slot-remove:focus { outline: 3px solid rgba(255,180,180,0.16); }
+
+.resource-label { font-weight:800; font-size:0.98rem; }
+.resource-value { font-weight:700; font-size:0.95rem; color:#cdd6e3; padding:0 0.4rem; }
+
+
+/* Add spacing between the "Spell Slots" heading and the first slot */
+#spellslots-container { margin-top: 0.6rem; }
+
+/* HP manager styles (D&D Beyond-like) */
+.hp-card { padding: 0.8rem; }
+.hp-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.hp-values { display:flex; flex-direction:column; }
+.hp-current { font-size:1.5rem; font-weight:900; color:#fff; }
+.hp-max-sub { font-size:0.85rem; color:#9aa7bf; }
+.hp-temp-badge { background: rgba(185,28,28,0.12); color:#ffb4b4; padding:0.25rem 0.6rem; border-radius:999px; font-weight:800; font-size:0.9rem; }
+.hp-bar { width:100%; background:rgba(255,255,255,0.03); height:12px; border-radius:8px; margin-top:0.6rem; overflow:hidden; }
+.hp-bar-fill { height:100%; background: linear-gradient(90deg,#ef4444,#f97316); width:100%; transition:width .22s ease; }
+
+.hp-bar-flash { box-shadow: 0 6px 20px rgba(249,115,22,0.18); transform: scaleY(1.02); }
+
+.hp-input{ width:100%; padding:0.45rem 0.6rem; border-radius:8px; background:#0f0f0f; border:1px solid #2a2a2a; color:inherit; }
+.hp-btn{ padding:0.6rem 0.9rem; border-radius:10px; border:none; cursor:pointer; font-weight:700; }
+.hp-btn-damage{ background:#991b1b; color:white; }
+.hp-btn-heal{ background:#166534; color:white; }
+.hp-action-buttons{ display:flex; gap:0.5rem; }
+
+/* Rest buttons */
+.rest-btn { background: linear-gradient(90deg,#0ea5a5,#059669); color: white; border: none; padding: 0.8rem 1rem; border-radius: 12px; font-weight:800; }
+.rest-btn:active{ transform: translateY(1px); opacity:0.95; }
+.rest-btn:focus{ outline: 3px solid rgba(5,150,105,0.16); }
+
+/* Ensure small buttons meet mobile touch target sizes */
+.small-btn { min-width:44px; min-height:44px; padding:0.45rem 0.6rem; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
+
+/* Tweak slot/resource spacing and sizes for mobile/touch devices */
+@media (max-width: 480px) {
+  .slot-toggle { padding:8px; }
+  .slot-toggle .slot-box { width:40px; height:40px; border-radius:8px; }
+  /* Reduce gaps so checkboxes sit closer to the level indicator */
+  .spellslot-controls { gap:0.6rem; justify-content:flex-start; }
+  .slot-decr, .slot-incr { min-width:44px; min-height:44px; font-size:1.05rem; padding:0.4rem; border-radius:8px; }
+  .resource-value { padding: 0 0.6rem; min-width:48px; text-align:center; }
+  .spellslot-item { min-height:64px; }
+  /* Narrow the left column so controls sit closer */
+  .slot-left { width:72px; flex: 0 0 72px; padding-right:0.3rem; }
+  /* Align center controls to the left on small screens */
+  .slot-center { justify-content:flex-start; }
+}
+
+/* Improve focus visibility for slot toggles */
+.slot-toggle:focus-within .slot-box { outline: 3px solid rgba(124,58,237,0.12); }
+
+
+
+/* Make the UI more phone-friendly */
+@media (max-width: 480px) {
+  body { padding: 0.6rem; }
+  main { max-width: 100%; margin-top: 0.6rem; }
+
+  .modal-content { width: 100%; height: 100%; border-radius: 0; max-width: none; padding: 1rem; overflow: auto; align-items: flex-start; }
+
+  button, .small-btn { min-height: 52px; }
+  .primary-btn { font-size: 1.05rem; padding: 0.9rem 1rem; }
+
+  .spellslot-controls { gap: 0.5rem; }
+  .slot-toggle { padding: 6px; }
+  .slot-box { width: 30px; height: 30px; border-radius: 8px; }
+}
+
+/* -----------------------------
+   STATUS EFFECTS
+------------------------------ */
+
+.status {
+  display: inline-block;
+  background-color: #262626;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  margin: 0.2rem;
+  font-size: 0.9rem;
+}
+
+/* Condition grid */
+.condition-grid{ display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.6rem; }
+.condition-btn{ background:#1a1a1a; border:1px solid #2a2a2a; padding:0.5rem 0.6rem; border-radius:8px; color:#e6e6e6; font-size:0.9rem; }
+.condition-btn.active{ background:#c2410c; color:white; border-color:#7a2b0a; box-shadow:0 1px 0 rgba(0,0,0,0.6); }
+.condition-btn.concentrating{ background:#b91c1c; color:white; border-color:#7a1a1a; box-shadow:0 2px 6px rgba(185,28,28,0.35); font-weight:700; }
+.condition-btn.concentrating.active{ background:#7f1d1d; }
+
+.session-toprow{ position:relative; padding-top:0.6rem; margin-bottom:0.25rem; }
+#back-btn{ position:absolute; left:0; top:0; }
+.session-toprow .link-btn{ margin-right:0.5rem; }
+.session-title-block{ display:flex; flex-direction:column; align-items:center; text-align:center; }
+.character-title{ font-size:1.6rem; font-weight:900; color:#ffffff; margin-top:0.15rem; }
+.concentration-under-btn{ margin-top:0.5rem; background:#b91c1c; color:white; border:none; padding:0.55rem 0.9rem; border-radius:10px; font-weight:800; font-size:0.95rem; }
+.concentration-under-btn.active{ box-shadow:0 4px 12px rgba(0,0,0,0.5); }
+
+.concentration-banner{ background: linear-gradient(90deg, #b91c1c, #f97316); color:white; padding:0.8rem 1rem; border-radius:12px; margin-top:0.5rem; font-weight:800; text-align:center; box-shadow:0 6px 24px rgba(0,0,0,0.45); font-size:1.1rem; position:sticky; top:0; z-index:20; }
+
+
+/* -----------------------------
+   NAV / BACK
+------------------------------ */
+
+#back-btn {
+  margin-bottom: 0.5rem;
+}
+
+/* Form feedback and toast */
+.form-error{ color:#ffb4b4; margin-top:0.5rem; font-size:0.95rem; }
+.toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:1rem; background:#111; color:#fff; padding:0.6rem 1rem; border-radius:999px; box-shadow:0 6px 20px rgba(0,0,0,0.6); opacity:0; transition:opacity .22s; z-index:50; }
+.toast.show{ opacity:1; }
+
+/* Highlight animation for newly added character */
+.highlight{ box-shadow:0 0 0 4px rgba(37,99,235,0.18); transition:box-shadow .35s; }
+
+/* Character list improvements */
+#character-list li:focus{ outline: 3px solid rgba(37,99,235,0.22); }
+#character-list li:hover{ background:#151516; }
+.delete-btn{ background:transparent; border:none; color:#ffb4b4; font-size:1rem; padding:0.3rem 0.5rem; border-radius:8px; }
+.delete-btn:active{ opacity:0.8; }
+
+/* Avatar initials */
+.avatar{ width:40px; height:40px; border-radius:10px; background:#202020; display:inline-flex; align-items:center; justify-content:center; color:#d1d5db; font-weight:700; font-size:0.95rem; }
+
+
+/* -----------------------------
+   APP HEADER / TOOLBAR
+------------------------------ */
+.app-header {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, rgba(18,18,18,0.9), rgba(18,18,18,0.6));
+  padding: 0.75rem 1rem;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:0.5rem;
+  z-index: 10;
+  border-bottom: 1px solid #222;
+}
+
+.app-header h1{ font-size:1rem; }
+
+.toolbar { display:flex; gap:0.5rem; }
+
+.primary-btn {
+  background-color:#2563eb;
+  color:white;
+  border-radius:10px;
+  padding:0.6rem 0.9rem;
+}
+
+.link-btn {
+  background:transparent;
+  border:none;
+  color:#9aa7bf;
+  padding:0.4rem 0.6rem;
+}
+
+.small-btn{
+  padding:0.3rem 0.6rem;
+  font-size:0.95rem;
+}
+
+.card.small { padding:0.6rem; border-radius:10px; }
+
+.row.small { gap:0.25rem; }
+
+.actions{ display:flex; justify-content:space-between; }
+
+/* Modal */
+.modal{
+  position:fixed;
+  inset:0;
+  display:none; /* hidden by default — use the HTML [hidden] attribute */
+  background: rgba(0,0,0,0.5);
+  padding:1rem;
+}
+
+/* Only show modal when it is not hidden */
+.modal:not([hidden]){
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.modal-content{ background:#111; padding:1rem; border-radius:12px; width:100%; max-width:420px; }
+
+/* Character form: make labels stack and inputs full-width for mobile */
+#character-form label{ display:block; margin-bottom:0.6rem; font-size:0.95rem; color:#d1d5db; }
+#character-form input, #character-form select{ width:100%; padding:0.6rem 0.75rem; border-radius:8px; border:1px solid #2a2a2a; background:#0f0f0f; color:inherit; margin-top:0.35rem; }
+#character-form .row{ display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.75rem; }
+#character-form .primary-btn{ min-width:90px; }
+
+
+/* Accessibility helpers */
+.sr-only{ position:absolute; left:-9999px; }
+
+@media (min-width: 520px){
+  main{ margin-top:1rem; }
+}
+
