@@ -11,6 +11,15 @@
   <link rel="manifest" href="pwa/manifest.json" />
 </head>
 <body>
+  <header class="app-header">
+    <h1>Resource Tracker</h1>
+    <div class="toolbar">
+      <button id="export-btn" aria-label="Export data">⬇ Export</button>
+      <button id="import-btn" aria-label="Import data">⬆ Import</button>
+      <button id="pwa-install-btn" hidden aria-hidden="true">Install</button>
+    </div>
+  </header>
+
   <!-- CHARACTER LIST SCREEN -->
   <main id="character-list-screen" class="screen">
     <h2 class="sr-only">Characters</h2>

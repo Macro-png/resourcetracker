@@ -233,15 +233,11 @@ button:disabled {
 @media (max-width: 480px) {
   .slot-toggle { padding:8px; }
   .slot-toggle .slot-box { width:40px; height:40px; border-radius:8px; }
-  /* Reduce gaps so checkboxes sit closer to the level indicator */
-  .spellslot-controls { gap:0.6rem; justify-content:flex-start; }
+  .spellslot-controls { gap:0.8rem; }
   .slot-decr, .slot-incr { min-width:44px; min-height:44px; font-size:1.05rem; padding:0.4rem; border-radius:8px; }
   .resource-value { padding: 0 0.6rem; min-width:48px; text-align:center; }
   .spellslot-item { min-height:64px; }
-  /* Narrow the left column so controls sit closer */
-  .slot-left { width:72px; flex: 0 0 72px; padding-right:0.3rem; }
-  /* Align center controls to the left on small screens */
-  .slot-center { justify-content:flex-start; }
+  .slot-left { width:100px; flex: 0 0 100px; }
 }
 
 /* Improve focus visibility for slot toggles */
