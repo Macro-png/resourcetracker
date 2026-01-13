@@ -2,8 +2,8 @@
   "name": "D&D Resource Tracker",
   "short_name": "D&D Tracker",
 
-  "start_url": "/dnd-resource-tracker/",
-  "scope": "/dnd-resource-tracker/",
+  "start_url": "/resourcetracker/",
+  "scope": "/resourcetracker/",
 
   "display": "standalone",
   "background_color": "#111827",
@@ -11,12 +11,12 @@
 
   "icons": [
     {
-      "src": "/dnd-resource-tracker/icons/icon-192.png",
+      "src": "/resourcetracker/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/dnd-resource-tracker/icons/icon-512.png",
+      "src": "/resourcetracker/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
