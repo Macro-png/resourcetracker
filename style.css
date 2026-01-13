@@ -128,8 +128,7 @@ button:disabled {
    RESOURCES / SPELL SLOTS
 ------------------------------ */
 
-.resource,
-.spell-slot,
+.resource-item,
 .spellslot-item {
   display: flex;
   justify-content: space-between;
@@ -138,13 +137,12 @@ button:disabled {
   border-bottom: 1px solid #2a2a2a;
 }
 
-.resource:last-child,
-.spell-slot:last-child,
+.resource-item:last-child,
 .spellslot-item:last-child {
   border-bottom: none;
 }
 
-.resource-name {
+.resource-label {
   font-size: 1rem;
 }
 
