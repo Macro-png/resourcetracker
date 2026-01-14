@@ -123,17 +123,17 @@
         </label>
 
         <label>
-          Full caster level (full spellcaster classes)
+          Full caster level
           <input id="character-form-fullcaster" name="fullcaster" type="number" min="0" max="20" value="0" />
         </label>
 
         <label>
-          Half caster level (paladin / ranger, counts as half)
+          Half caster level (Paladins, Rangers)
           <input id="character-form-halfcaster" name="halfcaster" type="number" min="0" max="20" value="0" />
         </label>
 
         <label>
-          Pact magic level (Warlock level)
+          Pact magic level (Warlocks)
           <input id="character-form-pactlevel" name="pactlevel" type="number" min="0" max="20" value="0" />
         </label>
 
@@ -327,6 +327,14 @@
 
         if (!Number.isInteger(pact) || pact < 0 || pact > 20) {
           formError.textContent = 'Pact magic level must be between 0 and 20.';
+          formError.hidden = false;
+          saveButton.disabled = true;
+          return false;
+        }
+
+        // Total levels cannot exceed 20
+        if ((full || 0) + (half || 0) + (pact || 0) > 20) {
+          formError.textContent = 'Character level cannot exceed 20.';
           formError.hidden = false;
           saveButton.disabled = true;
           return false;

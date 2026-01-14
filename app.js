@@ -472,8 +472,26 @@ function computeHalfCasterSlots(level){
 
 function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLevel) {
   const full = Math.max(0, parseInt(fullCasterLevel || 0, 10));
-  const half = Math.max(0, parseInt(halfCasterLevel || 0, 10));
-  const pact = Math.max(0, parseInt(pactLevel || 0, 10));
+  let half = Math.max(0, parseInt(halfCasterLevel || 0, 10));
+  let pact = Math.max(0, parseInt(pactLevel || 0, 10));
+
+  // Ensure the combined caster breakdown does not exceed 20 levels. If it does,
+  // reduce pact first, then half if needed (preserves full caster levels).
+  const total = full + half + pact;
+  if (total > 20) {
+    let over = total - 20;
+    if (pact >= over) {
+      pact -= over;
+      over = 0;
+    } else {
+      over -= pact;
+      pact = 0;
+    }
+    if (over > 0) {
+      half = Math.max(0, half - over);
+    }
+    console.warn('Caster breakdown exceeded 20 and was adjusted to fit the 20-level maximum.');
+  }
 
   // If this is a single-class half-caster (e.g., Paladin or Ranger), use the class table.
   // Note: Pact Magic (warlock) is a separate feature and should not prevent a single-class
