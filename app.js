@@ -130,41 +130,15 @@ function renderCharacterList() {
 }
 
 
-document
-  .getElementById("add-character-btn")
-  .addEventListener("click", () => {
-    // Prefer the modal UI when available (prevents native prompt from showing)
-    const modal = document.getElementById('character-modal');
-    if (modal) {
-      modal.hidden = false;
-      const nameInput = document.getElementById('character-form-name');
-      nameInput && nameInput.focus();
-      return;
-    }
-
-    // Fallback for very old or stripped-down installs: use prompt
-    const name = prompt("Character name:");
-    if (!name) return;
-
-    const maxHP = parseInt(prompt("Max HP:"), 10);
-    if (isNaN(maxHP)) return;
-
-    const newCharacter = {
-      id: crypto.randomUUID(),
-      name,
-      maxHP,
-      currentHP: maxHP,
-      tempHP: 0,
-      deathSaves: { success: 0, failure: 0 },
-      spellSlots: [],
-      resources: [],
-      statuses: []
-    };
-
-    state.characters.push(newCharacter);
-    saveState();
-    renderCharacterList();
-  });
+document.getElementById("add-character-btn").addEventListener("click", () => {
+  // Open the character modal (preferred UI)
+  const modal = document.getElementById('character-modal');
+  if (modal) {
+    modal.hidden = false;
+    const nameInput = document.getElementById('character-form-name');
+    nameInput && nameInput.focus();
+  }
+});
 
   function renderSession() {
   const c = getSelectedCharacter();
@@ -235,7 +209,7 @@ function renderResources(c) {
   container.innerHTML = '';
   c.resources.forEach(r => {
     const el = resourceTemplate.content.firstElementChild.cloneNode(true);
-    el.querySelector('[data-key="label"]').textContent = `${r.name} (${r.recoversOn || 'none'})`;
+    el.querySelector('[data-key="label"]').textContent = `${r.name}`;
 
     const controls = el.querySelector('[data-key="controls"]');
     controls.innerHTML = '';
@@ -284,10 +258,25 @@ function renderSpellSlots(c) {
   const container = document.getElementById('spellslots-container');
   container.innerHTML = '';
 
+  // Ensure any slot that recovers on short rest is marked as a pact slot for consistency
+  if (Array.isArray(c.spellSlots)) {
+    let changed = false;
+    c.spellSlots.forEach(s => {
+      const shouldBePact = (s.recoversOn === 'short');
+      if (!!s.pact !== shouldBePact) {
+        s.pact = shouldBePact;
+        changed = true;
+      }
+    });
+    if (changed) saveState();
+  }
+
   // Render pact (warlock) slots first, then regular class/multiclass slots.
   const slots = (c.spellSlots || []).slice().sort((a, b) => {
-    if (a.pact === b.pact) return a.level - b.level;
-    return b.pact ? 1 : -1; // pact slots first
+    // Pact slots first; within each group, order by level ascending
+    if (a.pact && !b.pact) return -1;
+    if (!a.pact && b.pact) return 1;
+    return a.level - b.level;
   });
 
   slots.forEach(s => {
@@ -533,8 +522,10 @@ function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLev
 
   // Return merged array sorted: pact slots first, then by level ascending
   const result = Object.values(merged).sort((a, b) => {
-    if (a.pact === b.pact) return a.level - b.level;
-    return b.pact ? 1 : -1; // pact first
+    // Pact slots first; within each group, order by level ascending
+    if (a.pact && !b.pact) return -1;
+    if (!a.pact && b.pact) return 1;
+    return a.level - b.level;
   });
 
   return result;
@@ -606,29 +597,23 @@ function renderStatuses(c) {
 
 // Add handlers for add/remove
 document.getElementById('add-resource-btn').addEventListener('click', () => {
-  const name = prompt('Resource name (e.g., Hit Dice, Sorcery Points):');
-  if (!name) return;
-  const max = parseInt(prompt('Max value:'), 10) || 1;
-  const current = parseInt(prompt('Current value:'), 10) || max;
-  const recoversOn = prompt('Recovers on: none | short | long', 'none') || 'none';
-
-  const c = getSelectedCharacter();
-  if (!c) return;
-  c.resources.push({ id: crypto.randomUUID(), name, current, max, recoversOn });
-  saveState();
-  renderSession();
+  // Open the resource modal (preferred UI)
+  const modal = document.getElementById('resource-modal');
+  if (modal) {
+    modal.hidden = false;
+    const nameField = document.getElementById('resource-form-name');
+    if (nameField) nameField.focus();
+  }
 });
 
 document.getElementById('add-spellslot-btn').addEventListener('click', () => {
-  const level = parseInt(prompt('Slot level (1-9):'), 10) || 1;
-  const max = parseInt(prompt('Max slots at this level:'), 10) || 0;
-  const recoversOn = prompt('Recovers on: none | short | long', 'long') || 'long';
-
-  const c = getSelectedCharacter();
-  if (!c) return;
-  c.spellSlots.push({ id: crypto.randomUUID(), level, max, used: 0, recoversOn });
-  saveState();
-  renderSession();
+  // Open the spell slot modal (preferred UI)
+  const modal = document.getElementById('spellslot-modal');
+  if (modal) {
+    modal.hidden = false;
+    const field = document.getElementById('spellslot-form-level');
+    if (field) field.focus();
+  }
 });
 
 

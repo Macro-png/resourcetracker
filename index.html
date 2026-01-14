@@ -147,10 +147,74 @@
     </div>
   </div>
   
+  <!-- Resource modal -->
+  <div id="resource-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="resource-modal-title">
+    <div class="modal-content">
+      <h3 id="resource-modal-title">Add Resource</h3>
+      <form id="resource-form">
+        <label>
+          Name
+          <input id="resource-form-name" name="name" required />
+        </label>
+
+        <label>
+          Max
+          <input id="resource-form-max" name="max" type="number" min="1" value="1" required />
+        </label>
 
 
-  <!-- Toast -->
-  <div id="toast" class="toast" hidden aria-live="polite"></div>
+        <label>
+          Recovers on
+          <select id="resource-form-recoversOn" name="recoversOn">
+            <option value="none">None</option>
+            <option value="short">Short rest</option>
+            <option value="long">Long rest</option>
+          </select>
+        </label>
+
+        <div id="resource-form-error" class="form-error" hidden></div>
+
+        <div class="row">
+          <button type="submit" class="primary-btn" id="resource-save">Save</button>
+          <button type="button" id="resource-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Spell slot modal -->
+  <div id="spellslot-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="spellslot-modal-title">
+    <div class="modal-content">
+      <h3 id="spellslot-modal-title">Add Spell Slot</h3>
+      <form id="spellslot-form">
+        <label>
+          Level (1-9)
+          <input id="spellslot-form-level" name="level" type="number" min="1" max="9" value="1" required />
+        </label>
+
+        <label>
+          Max slots
+          <input id="spellslot-form-max" name="max" type="number" min="0" value="1" required />
+        </label>
+
+        <label>
+          Recovers on
+          <select id="spellslot-form-recoversOn" name="recoversOn">
+            <option value="none">None</option>
+            <option value="short">Short rest</option>
+            <option value="long" selected>Long rest</option>
+          </select>
+        </label>
+
+        <div id="spellslot-form-error" class="form-error" hidden></div>
+
+        <div class="row">
+          <button type="submit" class="primary-btn" id="spellslot-save">Save</button>
+          <button type="button" id="spellslot-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Hidden file input for import -->
   <input id="import-file" type="file" accept="application/json" hidden />
@@ -287,9 +351,9 @@
       const maxInput = document.getElementById('character-form-maxhp');
       const saveButton = document.getElementById('character-save');
       const formError = document.getElementById('character-form-error');
-      const toast = document.getElementById('toast');
 
       function validateForm(){
+
         formError.hidden = true;
         const name = nameInput.value.trim();
         const max = parseInt(maxInput.value, 10);
@@ -351,12 +415,7 @@
       document.getElementById('character-form-pactlevel').addEventListener('input', validateForm);
       validateForm();
 
-      function showToast(msg, ms = 1600){
-        toast.textContent = msg;
-        toast.hidden = false;
-        toast.classList.add('show');
-        setTimeout(()=>{ toast.classList.remove('show'); toast.hidden = true; }, ms);
-      }
+
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -468,6 +527,103 @@
       document.getElementById('back-btn').addEventListener('click', (e) => {
         // existing handler in app.js will also run; this is just defensive
       });
+
+      // Resource modal handlers
+      const resourceModal = document.getElementById('resource-modal');
+      const resourceForm = document.getElementById('resource-form');
+      const resourceName = document.getElementById('resource-form-name');
+      const resourceMax = document.getElementById('resource-form-max');
+      const resourceRecovers = document.getElementById('resource-form-recoversOn');
+      const resourceError = document.getElementById('resource-form-error');
+      const resourceCancel = document.getElementById('resource-cancel');
+
+      document.getElementById('add-resource-btn').addEventListener('click', () => {
+        resourceModal.hidden = false;
+        resourceName.focus();
+      });
+
+      resourceCancel.addEventListener('click', () => {
+        resourceModal.hidden = true;
+        // return focus to the add button for accessibility
+        const addBtn = document.getElementById('add-resource-btn');
+        if (addBtn) addBtn.focus();
+      });
+      // support ESC to close and return focus
+      resourceModal.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          resourceModal.hidden = true;
+          const addBtn = document.getElementById('add-resource-btn');
+          if (addBtn) addBtn.focus();
+        }
+      });
+
+      resourceForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        resourceError.hidden = true;
+        const name = resourceName.value.trim();
+        const max = parseInt(resourceMax.value, 10) || 1;
+        const recoversOn = resourceRecovers.value || 'none';
+        if (!name) { resourceError.textContent = 'Please enter a name.'; resourceError.hidden = false; return; }
+        if (!Number.isInteger(max) || max < 1) { resourceError.textContent = 'Max must be 1 or more.'; resourceError.hidden = false; return; }
+        const c = window.getSelectedCharacter && window.getSelectedCharacter();
+        if (!c) { resourceError.textContent = 'No character selected.'; resourceError.hidden = false; return; }
+        const cur = max;
+        c.resources.push({ id: crypto.randomUUID(), name, current: cur, max, recoversOn });
+        window.saveState && window.saveState();
+        window.renderSession && window.renderSession();
+        resourceModal.hidden = true;
+        resourceForm.reset();
+        showToast(`Added resource '${name}' (recovers: ${recoversOn})`);
+      });
+
+      // Spell slot modal handlers
+      const slotModal = document.getElementById('spellslot-modal');
+      const slotForm = document.getElementById('spellslot-form');
+      const slotLevel = document.getElementById('spellslot-form-level');
+      const slotMax = document.getElementById('spellslot-form-max');
+      const slotRecovers = document.getElementById('spellslot-form-recoversOn');
+      const slotError = document.getElementById('spellslot-form-error');
+      const slotCancel = document.getElementById('spellslot-cancel');
+
+      document.getElementById('add-spellslot-btn').addEventListener('click', () => {
+        slotModal.hidden = false;
+        slotLevel.focus();
+      });
+
+      slotCancel.addEventListener('click', () => {
+        slotModal.hidden = true;
+        const addBtn = document.getElementById('add-spellslot-btn');
+        if (addBtn) addBtn.focus();
+      });
+
+      // support ESC to close and return focus
+      slotModal.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          slotModal.hidden = true;
+          const addBtn = document.getElementById('add-spellslot-btn');
+          if (addBtn) addBtn.focus();
+        }
+      });
+
+      slotForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        slotError.hidden = true;
+        const level = parseInt(slotLevel.value, 10) || 1;
+        const max = parseInt(slotMax.value, 10) || 0;
+        const recoversOn = slotRecovers.value || 'long';
+        if (!Number.isInteger(level) || level < 1 || level > 9) { slotError.textContent = 'Level must be 1..9.'; slotError.hidden = false; return; }
+        if (!Number.isInteger(max) || max < 0) { slotError.textContent = 'Max must be 0 or more.'; slotError.hidden = false; return; }
+        const c = window.getSelectedCharacter && window.getSelectedCharacter();
+        if (!c) { slotError.textContent = 'No character selected.'; slotError.hidden = false; return; }
+        const isPact = (recoversOn === 'short');
+        c.spellSlots.push({ id: crypto.randomUUID(), level, max, used: 0, recoversOn, pact: isPact });
+        window.saveState && window.saveState();
+        window.renderSession && window.renderSession();
+        slotModal.hidden = true;
+        slotForm.reset();
+        showToast(`Added spell slots: level ${level}, max ${max} (recovers: ${recoversOn})`);
+      });
+
     })();
   </script>
 
