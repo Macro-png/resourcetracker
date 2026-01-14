@@ -514,7 +514,7 @@ function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLev
   // Pact magic (warlock) - separate slot pool, recovers on short rest
   if (pact > 0) {
     const pactSlots = (pact === 1) ? 1 : 2;
-    const slotLevel = Math.ceil(pact / 2); // warlock slot level progression
+    const slotLevel = Math.min(Math.ceil(pact / 2), 5); // warlock slot level progression
     out.push({ id: crypto.randomUUID(), level: slotLevel, max: pactSlots, used: 0, recoversOn: 'short', pact: true });
   }
 
