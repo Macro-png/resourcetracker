@@ -150,19 +150,49 @@ document.getElementById("add-character-btn").addEventListener("click", () => {
 
   document.getElementById("character-name").textContent = c.name;
 
-  // HP UI: current/max, temp badge and bar
-  const hpDisplay = document.getElementById('hp-display');
-  hpDisplay.textContent = `${c.currentHP} / ${c.maxHP}`;
+  document.getElementById('hp-add').addEventListener('click', () => {
+    const amount = parseInt(
+      document.getElementById('hp-update-amount').value,
+      10
+    ) || 0;
 
-  const tempBadge = document.getElementById('hp-temp-badge');
-  if (tempBadge){
-    if (c.tempHP && c.tempHP > 0){
-      tempBadge.hidden = false;
-      tempBadge.textContent = `Temp ${c.tempHP}`;
-    } else {
-      tempBadge.hidden = true;
-    }
-  }
+    if (amount > 0) heal(amount);
+  });
+
+  document.getElementById('hp-subtract').addEventListener('click', () => {
+    const amount = parseInt(
+      document.getElementById('hp-update-amount').value,
+      10
+    ) || 0;
+
+    if (amount > 0) applyDamage(amount);
+  });
+
+  // // HP UI: current/max, temp badge and bar
+  // document.getElementById('hp-current').textContent = c.currentHP;
+  // document.getElementById('hp-max').textContent = c.maxHP;
+
+  // const tempEl = document.getElementById('hp-temp');
+  // tempEl.textContent = c.tempHP && c.tempHP > 0 ? c.tempHP : '--';
+
+  // // HP bar
+  // const fill = document.getElementById('hp-bar-fill');
+  // if (fill) {
+  //   const pct =
+  //     c.maxHP > 0
+  //       ? Math.max(0, Math.min(100, Math.round((c.currentHP / c.maxHP) * 100)))
+  //       : 0;
+  //   fill.style.width = pct + '%';
+  // }
+
+  // Update separate current / max / temp elements
+  const curEl = document.getElementById('hp-current');
+  const maxEl = document.getElementById('hp-max');
+  if (curEl) curEl.textContent = c.currentHP;
+  if (maxEl) maxEl.textContent = c.maxHP;
+
+  const tempInline = document.getElementById('hp-temp-inline');
+  if (tempInline) tempInline.value = c.tempHP && c.tempHP > 0 ? c.tempHP : '';
 
   const fill = document.getElementById('hp-bar-fill');
   if (fill){

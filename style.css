@@ -77,10 +77,14 @@ button:disabled {
 
 /* Primary action */
 #add-character-btn {
-  width: 100%;
-  margin-top: 1rem;
-  font-size: 1.1rem;
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 2rem);
+  z-index: 1000;
 }
+
 
 /* -----------------------------
    CARDS
@@ -100,6 +104,7 @@ button:disabled {
 
 #character-list {
   list-style: none;
+  margin-bottom: 5rem; /* space for fixed add button */
 }
 
 #character-list li {
@@ -126,14 +131,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
   --safe-inset-left: env(safe-area-inset-left);
 }
 
-/* -----------------------------
-   HP DISPLAY
------------------------------- */
-
-#hp-display {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-}
 
 /* -----------------------------
    RESOURCES / SPELL SLOTS
@@ -163,13 +160,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
   padding: 0.3rem 0.6rem;
   font-size: 0.9rem;
 }
-
-/* Pact / Warlock visual accent 
-.spellslot-item.pact-slot {
-  border-left: 4px solid #7c3aed;
-  background: linear-gradient(90deg, rgba(124,58,237,0.04), rgba(17,11,46,0.02));
-}
-*/
 
 .pact-badge {
   margin-left: 0.5rem;
@@ -214,18 +204,39 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 /* Add spacing between the "Spell Slots" heading and the first slot */
 #spellslots-container { margin-top: 0.6rem; }
 
-/* HP manager styles (D&D Beyond-like) */
+/* HP manager styles */
 .hp-card { padding: 0.8rem; }
-.hp-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
-.hp-values { display:flex; flex-direction:column; }
-.hp-current { font-size:1.5rem; font-weight:900; color:#fff; }
-.hp-max-sub { font-size:0.85rem; color:#9aa7bf; }
-.hp-temp-badge { background: rgba(185,28,28,0.12); color:#ffb4b4; padding:0.25rem 0.6rem; border-radius:999px; font-weight:800; font-size:0.9rem; }
+
+/* Three-column layout: actions | values | temp */
+.hp-main-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.hp-actions { display:flex; flex-direction:column; gap:0.5rem; width:96px; }
+.hp-action-pill { display:flex; align-items:center; justify-content:center; padding:0.55rem 0.6rem; border-radius:8px; background:transparent; border:2px solid; cursor:pointer; font-weight:800; text-transform:uppercase; font-size:0.95rem; }
+.hp-action-pill.heal { border-color:#16a34a; color:#16a34a; background: rgba(16,185,129,0.04); }
+.hp-action-pill.damage { border-color:#dc2626; color:#dc2626; background: rgba(239,68,68,0.04); }
+.hp-amount-input { padding:0.45rem 0.6rem; border-radius:8px; background:#0f0f0f; border:1px solid #2a2a2a; color:inherit; text-align:center; }
+
+.hp-values { display:flex; flex-direction:column; align-items:center; gap:0.25rem; flex:1; }
+.hp-labels { display:flex; gap:1.2rem; color:#9aa7bf; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.02em; }
+.hp-numbers { display:flex; align-items:baseline; gap:0.5rem; }
+.hp-numbers #hp-current { font-size:2.4rem; font-weight:900; color:#ffffff; }
+.hp-numbers .slash { color:#9aa7bf; font-size:1.1rem; }
+.hp-numbers #hp-max { font-size:1.2rem; color:#cdd6e3; font-weight:800; }
+.hp-subtitle { text-align:center; font-weight:800; font-size:0.85rem; color:#9aa7bf; margin-top:0.15rem; }
+
+.hp-temp { display:flex; flex-direction:column; align-items:center; gap:0.15rem; min-width:72px; }
+.hp-temp .hp-label { font-size:0.82rem; color:#9aa7bf; text-transform:uppercase; }
+#hp-temp { font-weight:900; color:#ffffff; font-size:1.1rem; }
+
+/* Inline Temp HP input next to Max */
+.hp-temp-inline { margin-left:0.6rem; display:inline-block; vertical-align:middle; }
+.hp-temp-inline-input { width:68px; padding:0.35rem 0.5rem; border-radius:8px; background:#0f0f0f; border:1px solid #2a2a2a; color:inherit; font-weight:700; text-align:center; }
+
 .hp-bar { width:100%; background:rgba(255,255,255,0.03); height:12px; border-radius:8px; margin-top:0.6rem; overflow:hidden; }
 .hp-bar-fill { height:100%; background: linear-gradient(90deg,#ef4444,#f97316); width:100%; transition:width .22s ease; }
 
 .hp-bar-flash { box-shadow: 0 6px 20px rgba(249,115,22,0.18); transform: scaleY(1.02); }
 
+/* inputs / buttons */
 .hp-input{ width:100%; padding:0.45rem 0.6rem; border-radius:8px; background:#0f0f0f; border:1px solid #2a2a2a; color:inherit; }
 .hp-btn{ padding:0.6rem 0.9rem; border-radius:10px; border:none; cursor:pointer; font-weight:700; }
 .hp-btn-damage{ background:#991b1b; color:white; }
@@ -439,34 +450,32 @@ body.concentrating::before {
 .actions{ display:flex; justify-content:space-between; }
 
 /* Modal */
-.modal{
-  position:fixed;
-  inset:0;
-  display:none; /* hidden by default — use the HTML [hidden] attribute */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(0,0,0,0.5);
-  padding:1rem;
 }
 
-/* Only show modal when it is not hidden */
-.modal:not([hidden]){
-  display:flex;
-  align-items:center;
-  justify-content:center;
+.modal[hidden] {
+  display: none;
 }
 
-.modal-content{ background:#111; padding:1rem; border-radius:12px; width:100%; max-width:420px; }
+.modal-content {
+  background: #121212;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+
+  width: fit-content;
+  max-width: 90vw;
+
+  height: fit-content;
+}
 
 /* Character form: make labels stack and inputs full-width for mobile */
 .modal-content form label{ display:block; margin-bottom:0.6rem; font-size:0.95rem; color:#d1d5db; }
 .modal-content form input, .modal-content form select{ width:100%; padding:0.6rem 0.75rem; border-radius:8px; border:1px solid #2a2a2a; background:#0f0f0f; color:inherit; margin-top:0.35rem; }
 .modal-content form .row{ display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.75rem; }
 .modal-content form .primary-btn{ min-width:90px; }
-
-
-/* Accessibility helpers */
-.sr-only{ position:absolute; left:-9999px; }
-
-@media (min-width: 520px){
-  main{ margin-top:1rem; }
-}
-

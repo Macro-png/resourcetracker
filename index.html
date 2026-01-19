@@ -22,8 +22,6 @@
 
   <!-- CHARACTER LIST SCREEN -->
   <main id="character-list-screen" class="screen">
-    <h2 class="sr-only">Characters</h2>
-
     <ul id="character-list" class="list"></ul>
 
     <button id="add-character-btn" class="primary-btn" aria-haspopup="dialog">
@@ -44,36 +42,85 @@
     <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive">Concentrating</div>
 
     <!-- HP CARD -->
-    <section class="card hp-card">
-      <div class="hp-header">
-        <div class="hp-values">
-          <div id="hp-display" class="hp-current" aria-live="polite">0 / 0</div>
-          <div class="hp-max-sub">HP</div>
+    <!-- <section class="card hp-card">
+      <div class="hp-main-row">
+        <div class="hp-actions">
+          <button id="hp-add" class="hp-btn hp-btn-heal">Heal</button>
+
+          <input
+            id="hp-update-amount"
+            type="number"
+            min="0"
+            value="1"
+            class="hp-input"
+            aria-label="HP adjustment amount"
+          />
+
+          <button id="hp-subtract" class="hp-btn hp-btn-damage">Damage</button>
         </div>
-        <div id="hp-temp-badge" class="hp-temp-badge" hidden>Temp 0</div>
+
+        <div class="hp-values">
+          <div class="hp-labels">
+            <span>Current</span>
+            <span>Max</span>
+          </div>
+          <div class="hp-numbers">
+            <span id="hp-current">0</span>
+            <span class="slash">/</span>
+            <span id="hp-max">0</span>
+          </div>
+
+          <div class="hp-subtitle">Hit points</div>
+        </div>
+
+        <div class="hp-temp">
+          <span class="hp-label">Temp</span>
+          <span id="hp-temp">--</span>
+        </div>
+      </div>
+
+      <div class="hp-bar" aria-hidden="true">
+        <div id="hp-bar-fill" class="hp-bar-fill"></div>
+      </div>
+    </section> -->
+    <section class="card hp-card">
+      <div class="hp-main-row">
+        <div class="hp-actions">
+          <button id="hp-add" class="hp-action-pill heal">HEAL</button>
+
+          <input
+            id="hp-update-amount"
+            type="number"
+            min="0"
+            value="1"
+            class="hp-input hp-amount-input"
+            aria-label="HP adjustment amount"
+          />
+
+          <button id="hp-subtract" class="hp-action-pill damage">DAMAGE</button>
+        </div>
+
+        <div class="hp-values">
+          <div class="hp-labels">
+            <span>Current</span>
+            <span>Max</span>
+          </div>
+          <div class="hp-numbers" role="status" aria-live="polite">
+            <span id="hp-current">0</span>
+            <span class="slash">/</span>
+            <span id="hp-max">0</span>
+
+            <label class="hp-temp-inline" title="Temp HP">
+              <input id="hp-temp-inline" type="number" min="0" class="hp-temp-inline-input" placeholder="--" aria-label="Temporary HP" />
+            </label>
+          </div>
+
+          <div class="hp-subtitle">HIT POINTS</div>
+        </div>
       </div>
 
       <div class="hp-bar" aria-hidden="true">
         <div id="hp-bar-fill" class="hp-bar-fill" style="width:100%"></div>
-      </div>
-
-      <div class="row hp-controls" style="align-items:center; margin-top:0.6rem; gap:0.6rem;">
-        <label class="hp-amount-label">
-          Amount
-          <input id="hp-update-amount" type="number" min="0" value="1" class="hp-input" />
-        </label>
-        <div class="hp-action-buttons">
-          <button id="hp-subtract" class="hp-btn hp-btn-damage">Damage</button>
-          <button id="hp-add" class="hp-btn hp-btn-heal">Heal</button>
-        </div>
-      </div>
-
-      <div class="row" style="align-items:center; margin-top:0.6rem; gap:0.6rem;">
-        <label style="flex:1;">
-          Temp HP
-          <input id="temp-hp-input" type="number" min="0" value="0" class="hp-input" />
-        </label>
-        <button id="temp-hp-set" class="hp-btn">Set Temp HP</button>
       </div>
     </section>
 
@@ -119,7 +166,7 @@
 
         <label>
           Max HP
-          <input id="character-form-maxhp" name="maxhp" type="number" min="1" value="10" required />
+          <input id="character-form-maxhp" name="maxhp" type="number" min="1" required />
         </label>
 
         <label>
@@ -490,18 +537,22 @@
         hpAmountInput.value = '';
       });
 
-      document.getElementById('temp-hp-set').addEventListener('click', () => {
-        const tempInput = document.getElementById('temp-hp-input');
-        const v = Math.max(0, parseInt(tempInput.value, 10) || 0);
-        const st = window.state || {};
-        const c = (st.characters || []).find(ch => ch.id === st.selectedCharacterId);
-        if (!c) { alert('No character selected'); return; }
-        c.tempHP = v;
-        window.saveState && window.saveState();
-        window.renderSession && window.renderSession();
-        // clear the temp HP input after use
-        tempInput.value = '';
-      });
+      const tempInline = document.getElementById('hp-temp-inline');
+      if (tempInline){
+        // Persist temp HP when changed and re-render
+        tempInline.addEventListener('change', () => {
+          const v = Math.max(0, parseInt(tempInline.value, 10) || 0);
+          const st = window.state || {};
+          const c = (st.characters || []).find(ch => ch.id === st.selectedCharacterId);
+          if (!c) { alert('No character selected'); return; }
+          c.tempHP = v;
+          window.saveState && window.saveState();
+          window.renderSession && window.renderSession();
+        });
+
+        // allow Enter to commit (blur triggers change)
+        tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
+      }
 
       // Rest buttons: call global rest handlers and provide feedback + hp bar flash
       document.getElementById('short-rest').addEventListener('click', () => {
