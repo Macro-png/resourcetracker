@@ -369,13 +369,22 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 body.concentrating::before {
   content: "";
   position: fixed;
-  inset: 0;
+  /* Inset the border by the device safe-area (notches / rounded corners) plus a small gap */
+  inset: calc(var(--safe-inset-top, 0px) + 6px) calc(var(--safe-inset-right, 0px) + 6px) calc(var(--safe-inset-bottom, 0px) + 6px) calc(var(--safe-inset-left, 0px) + 6px);
   pointer-events: none;
 
-  outline: 6px solid rgba(202, 24, 24, 0.45);
-  outline-offset: -6px;
+  /* Use an inset box-shadow instead of outline so the radius can be smoothly rounded */
+  box-shadow: inset 0 0 0 6px rgba(202, 24, 24, 0.45);
+  /* Use a flexible radius so it looks correct on narrow and wide screens; add extra radius on devices with larger safe insets */
+  border-radius: max(12px, calc(6px + (var(--safe-inset-top, 0px) + var(--safe-inset-right, 0px)) / 2));
 
   z-index: 1000;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  body.concentrating::before { transition: none; }
 }
 
 
