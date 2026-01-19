@@ -87,36 +87,46 @@
       <div class="hp-main-row">
         <div class="hp-actions">
           <button id="hp-add" class="hp-action-pill heal">HEAL</button>
-
           <input
             id="hp-update-amount"
             type="number"
             min="0"
-            value="1"
             class="hp-input hp-amount-input"
             aria-label="HP adjustment amount"
           />
-
           <button id="hp-subtract" class="hp-action-pill damage">DAMAGE</button>
         </div>
 
-        <div class="hp-values">
-          <div class="hp-labels">
-            <span>Current</span>
-            <span>Max</span>
-          </div>
-          <div class="hp-numbers" role="status" aria-live="polite">
-            <span id="hp-current">0</span>
-            <span class="slash">/</span>
-            <span id="hp-max">0</span>
 
-            <label class="hp-temp-inline" title="Temp HP">
-              <input id="hp-temp-inline" type="number" min="0" class="hp-temp-inline-input" placeholder="--" aria-label="Temporary HP" />
-            </label>
+          <div class="hp-values">
+            <div class="hp-labels">
+              <span>Current</span>
+              <span>Max</span>
+            </div>
+            <div class="hp-numbers" role="status" aria-live="polite">
+              <span id="hp-current">0</span>
+              <span class="slash">/</span>
+              <span id="hp-max">0</span>
+            </div>
+            <div class="hp-subtitle">HIT POINTS</div>
+          </div>
+          
+          <div class="hp-temp">
+            <div class="hp-temp-label">Temp</div>
+            
+            <div>
+              <input
+                id="hp-temp-inline"
+                type="number"
+                min="0"
+                class="hp-temp-inline-input"
+                placeholder="--"
+                aria-label="Temporary HP"
+              />
+            </div>
+
           </div>
 
-          <div class="hp-subtitle">HIT POINTS</div>
-        </div>
       </div>
 
       <div class="hp-bar" aria-hidden="true">
