@@ -22,17 +22,14 @@ loadState();
 
 // ─── Screens ─────────────────────────────────────────────────────────────────
 
-const characterListScreen = document.getElementById("character-list-screen");
-const sessionScreen = document.getElementById("session-screen");
-
 function showCharacterList() {
-  sessionScreen.hidden = true;
-  characterListScreen.hidden = false;
+  document.getElementById("session-screen").hidden = true;
+  document.getElementById("character-list-screen").hidden = false;
 }
 
 function showSession() {
-  characterListScreen.hidden = true;
-  sessionScreen.hidden = false;
+  document.getElementById("character-list-screen").hidden = true;
+  document.getElementById("session-screen").hidden = false;
 }
 
 // ─── Character List ───────────────────────────────────────────────────────────
@@ -144,6 +141,12 @@ function applyDamage(amount) {
   c.currentHP = Math.max(0, c.currentHP - amount);
   saveState();
   renderSession();
+  if (amount > 0 && getConcentration(c)) {
+    const dc = Math.max(10, Math.floor(amount / 2));
+    document.getElementById('concentration-modal-text').textContent =
+      `${c.name} must make a DC ${dc} CON save to maintain concentration.`;
+    document.getElementById('concentration-modal').hidden = false;
+  }
 }
 
 function heal(amount) {
@@ -442,7 +445,7 @@ function renderStatuses(c) {
   const banner = document.getElementById('concentration-banner');
   if (banner) {
     banner.hidden = !conc;
-    if (conc) banner.textContent = `${c.name} is concentrating${conc.spell ? ' on ' + conc.spell : ''} — CON save on damage to maintain.`;
+    if (conc) banner.textContent = `${c.name} is concentrating. Damage while concentrating requires a CON save to maintain it, with a separate save for each damage source.`;
   }
 }
 
@@ -601,8 +604,7 @@ document.getElementById('import-file').addEventListener('change', async (ev) => 
       deathSaves: { success: 0, failure: 0 },
       spellSlots: buildSpellSlotsFromCasterInfo(full, half, pact),
       resources: [],
-      statuses: [],
-      caster: { full, half, pact }
+      statuses: []
     };
 
     state.characters.push(newCharacter);
@@ -665,6 +667,7 @@ document.getElementById("back-btn").addEventListener("click", () => {
 // ─── Rest Buttons ────────────────────────────────────────────────────────────
 
 document.getElementById('short-rest').addEventListener('click', () => {
+  if (!confirm('Take a short rest? This will restore short-rest resources and slots.')) return;
   shortRest();
   showToast('Short rest: short-rest resources restored');
   flashBar();
@@ -769,3 +772,7 @@ try {
 } catch (err) {
   console.error('Error rendering initial UI:', err);
 }
+
+document.getElementById('concentration-modal-dismiss').addEventListener('click', () => {
+  document.getElementById('concentration-modal').hidden = true;
+});
