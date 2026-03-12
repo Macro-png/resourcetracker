@@ -251,9 +251,26 @@ button:disabled { opacity: 0.5; }
    STATUS EFFECTS
 ------------------------------ */
 
-.condition-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
-.condition-btn  { background: #1a1a1a; border: 1px solid #2a2a2a; padding: 0.5rem 0.6rem; border-radius: 8px; color: #e6e6e6; font-size: 0.9rem; }
-.condition-btn.active        { background: #c2410c; color: white; border-color: #7a2b0a; box-shadow: 0 1px 0 rgba(0,0,0,0.6); }
+.condition-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.condition-btn {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  padding: 0.5rem 0.4rem;
+  border-radius: 8px;
+  color: #e6e6e6;
+  font-size: 0.9rem;
+  width: 100%;
+  text-align: center;
+}
+
+.condition-btn.active  { background: #c2410c; color: white; border-color: #7a2b0a; box-shadow: 0 1px 0 rgba(0,0,0,0.6); }
+.condition-btn.implied { opacity: 0.7; cursor: default; }
 .condition-btn.concentrating { background: #b91c1c; color: white; border-color: #7a1a1a; box-shadow: 0 2px 6px rgba(185,28,28,0.35); font-weight: 700; }
 .condition-btn.concentrating.active { background: #7f1d1d; }
 

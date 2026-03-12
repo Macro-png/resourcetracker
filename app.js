@@ -372,6 +372,15 @@ const STANDARD_CONDITIONS = [
   'Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'
 ];
 
+const IMPLIED_CONDITIONS = {
+  'Paralyzed':  ['Incapacitated'],
+  'Stunned':    ['Incapacitated'],
+  'Petrified':  ['Incapacitated'],
+  'Unconscious': ['Incapacitated', 'Prone'],
+};
+
+const STICKY_IMPLIED = new Set(['Prone']);
+
 function hasCondition(c, name) {
   return c.statuses.some(s => s.name === name);
 }
@@ -379,8 +388,36 @@ function hasCondition(c, name) {
 function toggleCondition(c, name) {
   if (hasCondition(c, name)) {
     c.statuses = c.statuses.filter(s => s.name !== name);
+    // Recompute which implied conditions are still needed
+    const stillImplied = new Set(
+      c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || [])
+    );
+    // Unstick conditions that are no longer implied by anything
+    c.statuses.forEach(s => {
+      if (s.implied && STICKY_IMPLIED.has(s.name) && !stillImplied.has(s.name)) {
+        s.implied = false;
+      }
+    });
+    // Remove implied conditions that were auto-added and no longer needed
+    c.statuses = c.statuses.filter(s =>
+      !s.implied || stillImplied.has(s.name) || STICKY_IMPLIED.has(s.name)
+    );
   } else {
     c.statuses.push({ id: crypto.randomUUID(), name, remaining: 0, durationType: 'rest' });
+    (IMPLIED_CONDITIONS[name] || []).forEach(imp => {
+      if (!hasCondition(c, imp)) {
+        c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
+      }
+    });
+    // FIX THE MAIN CONDITION NOT BEING SELECTED
+    // (IMPLIED_CONDITIONS[name] || []).forEach(imp => {
+    //   const existing = c.statuses.find(s => s.name === imp);
+    //   if (!existing) {
+    //     c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
+    //   } else {
+    //     existing.implied = true;
+    //   }
+    // });
   }
   saveState();
   renderSession();
@@ -400,26 +437,6 @@ function toggleConcentration(c) {
 }
 
 function renderStatuses(c) {
-  const container = document.getElementById('status-container');
-  container.innerHTML = '';
-
-  c.statuses.forEach(st => {
-    const div = document.createElement('div');
-    div.className = 'status-item card small';
-    div.textContent = `${st.name}${st.remaining ? ` (${st.remaining} ${st.durationType || ''})` : ''}`;
-
-    const remove = document.createElement('button');
-    remove.className = 'link-btn';
-    remove.textContent = 'Remove';
-    remove.addEventListener('click', () => {
-      c.statuses = c.statuses.filter(x => x.id !== st.id);
-      saveState(); renderSession();
-    });
-
-    div.appendChild(remove);
-    container.appendChild(div);
-  });
-
   const grid = document.getElementById('condition-grid');
   if (!grid) return;
   grid.innerHTML = '';
@@ -428,8 +445,17 @@ function renderStatuses(c) {
     const btn = document.createElement('button');
     btn.className = 'condition-btn';
     btn.textContent = cond;
-    if (hasCondition(c, cond)) btn.classList.add('active');
-    btn.addEventListener('click', () => toggleCondition(c, cond));
+    const active = hasCondition(c, cond);
+    const implied = active && c.statuses.find(s => s.name === cond)?.implied;
+    if (active) btn.classList.add('active');
+    if (implied) btn.title = 'Applied automatically by another condition';
+    btn.addEventListener('click', () => {
+      const stillNeeded = Object.entries(IMPLIED_CONDITIONS).some(
+        ([src, imps]) => imps.includes(cond) && hasCondition(c, src)
+      );
+      if (implied && stillNeeded) return;
+      toggleCondition(c, cond);
+    });
     grid.appendChild(btn);
   });
 
