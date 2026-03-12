@@ -22,8 +22,6 @@
 
   <!-- CHARACTER LIST SCREEN -->
   <main id="character-list-screen" class="screen">
-    <h2 class="sr-only">Characters</h2>
-
     <ul id="character-list" class="list"></ul>
 
     <button id="add-character-btn" class="primary-btn" aria-haspopup="dialog">
@@ -45,35 +43,49 @@
 
     <!-- HP CARD -->
     <section class="card hp-card">
-      <div class="hp-header">
-        <div class="hp-values">
-          <div id="hp-display" class="hp-current" aria-live="polite">0 / 0</div>
-          <div class="hp-max-sub">HP</div>
+      <div class="hp-main-row">
+        <div class="hp-actions">
+          <button id="hp-add" class="hp-action-pill heal">HEAL</button>
+          <input
+            id="hp-update-amount"
+            type="number"
+            min="0"
+            class="hp-input hp-amount-input"
+            aria-label="HP adjustment amount"
+          />
+          <button id="hp-subtract" class="hp-action-pill damage">DAMAGE</button>
         </div>
-        <div id="hp-temp-badge" class="hp-temp-badge" hidden>Temp 0</div>
+
+        <div class="hp-values">
+          <div class="hp-labels">
+            <span>Current</span>
+            <span>Max</span>
+          </div>
+          <div class="hp-numbers" role="status" aria-live="polite">
+            <span id="hp-current">0</span>
+            <span class="slash">/</span>
+            <span id="hp-max">0</span>
+          </div>
+          <div class="hp-subtitle">HIT POINTS</div>
+        </div>
+
+        <div class="hp-temp">
+          <div class="hp-temp-label">Temp</div>
+          <div>
+            <input
+              id="hp-temp-inline"
+              type="number"
+              min="0"
+              class="hp-temp-inline-input"
+              placeholder="--"
+              aria-label="Temporary HP"
+            />
+          </div>
+        </div>
       </div>
 
       <div class="hp-bar" aria-hidden="true">
         <div id="hp-bar-fill" class="hp-bar-fill" style="width:100%"></div>
-      </div>
-
-      <div class="row hp-controls" style="align-items:center; margin-top:0.6rem; gap:0.6rem;">
-        <label class="hp-amount-label">
-          Amount
-          <input id="hp-update-amount" type="number" min="0" value="1" class="hp-input" />
-        </label>
-        <div class="hp-action-buttons">
-          <button id="hp-subtract" class="hp-btn hp-btn-damage">Damage</button>
-          <button id="hp-add" class="hp-btn hp-btn-heal">Heal</button>
-        </div>
-      </div>
-
-      <div class="row" style="align-items:center; margin-top:0.6rem; gap:0.6rem;">
-        <label style="flex:1;">
-          Temp HP
-          <input id="temp-hp-input" type="number" min="0" value="0" class="hp-input" />
-        </label>
-        <button id="temp-hp-set" class="hp-btn">Set Temp HP</button>
       </div>
     </section>
 
@@ -95,8 +107,6 @@
     <section class="card">
       <h3>Conditions</h3>
       <div id="status-container" aria-live="polite"></div>
-
-      <!-- Quick condition toggles (standard 5e conditions) -->
       <div id="condition-grid" class="condition-grid" aria-label="Standard conditions"></div>
     </section>
 
@@ -119,7 +129,7 @@
 
         <label>
           Max HP
-          <input id="character-form-maxhp" name="maxhp" type="number" min="1" value="10" required />
+          <input id="character-form-maxhp" name="maxhp" type="number" min="1" required />
         </label>
 
         <label>
@@ -146,7 +156,7 @@
       </form>
     </div>
   </div>
-  
+
   <!-- Resource modal -->
   <div id="resource-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="resource-modal-title">
     <div class="modal-content">
@@ -161,7 +171,6 @@
           Max
           <input id="resource-form-max" name="max" type="number" min="1" value="1" required />
         </label>
-
 
         <label>
           Recovers on
@@ -250,7 +259,10 @@
         </div>
       </div>
     </div>
-  </template>    
+  </template>
+
+  <!-- ✅ ADDED: Toast notification element (was missing, referenced in app.js showToast()) -->
+  <div id="toast" class="toast" hidden aria-live="polite"></div>
 
   <script>
     // Small UI glue that uses the global state defined in app.js
@@ -415,8 +427,6 @@
       document.getElementById('character-form-pactlevel').addEventListener('input', validateForm);
       validateForm();
 
-
-
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         if (!validateForm()) return;
@@ -439,7 +449,6 @@
           spellSlots,
           resources: [],
           statuses: [],
-          // store caster breakdown for later edits
           caster: { full, half, pact }
         };
 
@@ -460,15 +469,12 @@
           if (li){
             li.scrollIntoView({ behavior: 'smooth', block: 'center' });
             li.classList.add('highlight');
-            // Auto-open the new character
             li.click();
             setTimeout(()=> li.classList.remove('highlight'), 1500);
           }
         }, 50);
 
-        // Build a compact slot summary for feedback
         const slotSummary = newCharacter.spellSlots.length ? newCharacter.spellSlots.map(s => `${s.level}L:${s.max}${s.pact ? ' (pact)' : ''}`).join(', ') : 'No spell slots';
-
         showToast(`Added '${newCharacter.name}' and opened character — ${slotSummary}`);
       });
 
@@ -478,7 +484,6 @@
         const v = Math.max(0, parseInt(hpAmountInput.value, 10) || 0);
         if (!v) return;
         window.heal && window.heal(v);
-        // clear the amount input after use
         hpAmountInput.value = '';
       });
 
@@ -486,29 +491,26 @@
         const v = Math.max(0, parseInt(hpAmountInput.value, 10) || 0);
         if (!v) return;
         window.applyDamage && window.applyDamage(v);
-        // clear the amount input after use
         hpAmountInput.value = '';
       });
 
-      document.getElementById('temp-hp-set').addEventListener('click', () => {
-        const tempInput = document.getElementById('temp-hp-input');
-        const v = Math.max(0, parseInt(tempInput.value, 10) || 0);
-        const st = window.state || {};
-        const c = (st.characters || []).find(ch => ch.id === st.selectedCharacterId);
-        if (!c) { alert('No character selected'); return; }
-        c.tempHP = v;
-        window.saveState && window.saveState();
-        window.renderSession && window.renderSession();
-        // clear the temp HP input after use
-        tempInput.value = '';
-      });
+      const tempInline = document.getElementById('hp-temp-inline');
+      if (tempInline){
+        tempInline.addEventListener('change', () => {
+          const v = Math.max(0, parseInt(tempInline.value, 10) || 0);
+          const st = window.state || {};
+          const c = (st.characters || []).find(ch => ch.id === st.selectedCharacterId);
+          if (!c) { alert('No character selected'); return; }
+          c.tempHP = v;
+          window.saveState && window.saveState();
+          window.renderSession && window.renderSession();
+        });
 
-      // Rest buttons: call global rest handlers and provide feedback + hp bar flash
+        tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
+      }
+
+      // Rest buttons
       document.getElementById('short-rest').addEventListener('click', () => {
-        if (!confirm || (typeof confirm === 'function' && !confirm('Take a short rest?'))){
-          // still allow quick short rest without confirmation on some environments
-          // but proceed after user confirms
-        }
         window.shortRest && window.shortRest();
         showToast('Short rest: restored short-rest resources and slots');
         const fill = document.getElementById('hp-bar-fill');
@@ -521,11 +523,6 @@
         showToast('Long rest: HP and long-rest resources restored');
         const fill = document.getElementById('hp-bar-fill');
         if (fill){ fill.classList.add('hp-bar-flash'); setTimeout(()=>fill.classList.remove('hp-bar-flash'), 900); }
-      });
-
-      // Back to list
-      document.getElementById('back-btn').addEventListener('click', (e) => {
-        // existing handler in app.js will also run; this is just defensive
       });
 
       // Resource modal handlers
@@ -544,16 +541,13 @@
 
       resourceCancel.addEventListener('click', () => {
         resourceModal.hidden = true;
-        // return focus to the add button for accessibility
-        const addBtn = document.getElementById('add-resource-btn');
-        if (addBtn) addBtn.focus();
+        document.getElementById('add-resource-btn').focus();
       });
-      // support ESC to close and return focus
+
       resourceModal.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           resourceModal.hidden = true;
-          const addBtn = document.getElementById('add-resource-btn');
-          if (addBtn) addBtn.focus();
+          document.getElementById('add-resource-btn').focus();
         }
       });
 
@@ -567,8 +561,7 @@
         if (!Number.isInteger(max) || max < 1) { resourceError.textContent = 'Max must be 1 or more.'; resourceError.hidden = false; return; }
         const c = window.getSelectedCharacter && window.getSelectedCharacter();
         if (!c) { resourceError.textContent = 'No character selected.'; resourceError.hidden = false; return; }
-        const cur = max;
-        c.resources.push({ id: crypto.randomUUID(), name, current: cur, max, recoversOn });
+        c.resources.push({ id: crypto.randomUUID(), name, current: max, max, recoversOn });
         window.saveState && window.saveState();
         window.renderSession && window.renderSession();
         resourceModal.hidden = true;
@@ -592,16 +585,13 @@
 
       slotCancel.addEventListener('click', () => {
         slotModal.hidden = true;
-        const addBtn = document.getElementById('add-spellslot-btn');
-        if (addBtn) addBtn.focus();
+        document.getElementById('add-spellslot-btn').focus();
       });
 
-      // support ESC to close and return focus
       slotModal.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           slotModal.hidden = true;
-          const addBtn = document.getElementById('add-spellslot-btn');
-          if (addBtn) addBtn.focus();
+          document.getElementById('add-spellslot-btn').focus();
         }
       });
 
@@ -626,7 +616,8 @@
 
     })();
   </script>
-
+  
+  <div id="toast" class="toast" hidden aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
 </html>
