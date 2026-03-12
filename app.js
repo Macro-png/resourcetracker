@@ -145,14 +145,12 @@ function renderSession() {
 
   document.getElementById("character-name").textContent = c.name;
 
-<<<<<<< HEAD
   // Update HP display
   const curEl = document.getElementById('hp-current');
   const maxEl = document.getElementById('hp-max');
   if (curEl) curEl.textContent = c.currentHP;
   if (maxEl) maxEl.textContent = c.maxHP;
 
-=======
   document.getElementById('hp-add').addEventListener('click', () => {
     const amount = parseInt(
       document.getElementById('hp-update-amount').value,
@@ -194,7 +192,6 @@ function renderSession() {
   if (curEl) curEl.textContent = c.currentHP;
   if (maxEl) maxEl.textContent = c.maxHP;
 
->>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
   const tempInline = document.getElementById('hp-temp-inline');
   if (tempInline) tempInline.value = c.tempHP && c.tempHP > 0 ? c.tempHP : '';
 

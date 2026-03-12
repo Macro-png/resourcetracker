@@ -42,23 +42,19 @@
     <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive">Concentrating</div>
 
     <!-- HP CARD -->
-<<<<<<< HEAD
     <section class="card hp-card">
       <div class="hp-main-row">
         <div class="hp-actions">
           <button id="hp-add" class="hp-action-pill heal">HEAL</button>
-=======
     <!-- <section class="card hp-card">
       <div class="hp-main-row">
         <div class="hp-actions">
           <button id="hp-add" class="hp-btn hp-btn-heal">Heal</button>
 
->>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
           <input
             id="hp-update-amount"
             type="number"
             min="0"
-<<<<<<< HEAD
             class="hp-input hp-amount-input"
             aria-label="HP adjustment amount"
           />
@@ -91,7 +87,6 @@
             />
           </div>
         </div>
-=======
             value="1"
             class="hp-input"
             aria-label="HP adjustment amount"
@@ -168,7 +163,6 @@
 
           </div>
 
->>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
       </div>
 
       <div class="hp-bar" aria-hidden="true">
@@ -583,10 +577,7 @@
 
       const tempInline = document.getElementById('hp-temp-inline');
       if (tempInline){
-<<<<<<< HEAD
-=======
         // Persist temp HP when changed and re-render
->>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
         tempInline.addEventListener('change', () => {
           const v = Math.max(0, parseInt(tempInline.value, 10) || 0);
           const st = window.state || {};
@@ -596,13 +587,10 @@
           window.saveState && window.saveState();
           window.renderSession && window.renderSession();
         });
-<<<<<<< HEAD
-=======
 
         // allow Enter to commit (blur triggers change)
         tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
       }
->>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
 
         tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
       }
@@ -714,7 +702,7 @@
 
     })();
   </script>
-  
+
   <div id="toast" class="toast" hidden aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
