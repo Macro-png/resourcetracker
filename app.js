@@ -145,12 +145,56 @@ function renderSession() {
 
   document.getElementById("character-name").textContent = c.name;
 
+<<<<<<< HEAD
   // Update HP display
   const curEl = document.getElementById('hp-current');
   const maxEl = document.getElementById('hp-max');
   if (curEl) curEl.textContent = c.currentHP;
   if (maxEl) maxEl.textContent = c.maxHP;
 
+=======
+  document.getElementById('hp-add').addEventListener('click', () => {
+    const amount = parseInt(
+      document.getElementById('hp-update-amount').value,
+      10
+    ) || 0;
+
+    if (amount > 0) heal(amount);
+  });
+
+  document.getElementById('hp-subtract').addEventListener('click', () => {
+    const amount = parseInt(
+      document.getElementById('hp-update-amount').value,
+      10
+    ) || 0;
+
+    if (amount > 0) applyDamage(amount);
+  });
+
+  // // HP UI: current/max, temp badge and bar
+  // document.getElementById('hp-current').textContent = c.currentHP;
+  // document.getElementById('hp-max').textContent = c.maxHP;
+
+  // const tempEl = document.getElementById('hp-temp');
+  // tempEl.textContent = c.tempHP && c.tempHP > 0 ? c.tempHP : '--';
+
+  // // HP bar
+  // const fill = document.getElementById('hp-bar-fill');
+  // if (fill) {
+  //   const pct =
+  //     c.maxHP > 0
+  //       ? Math.max(0, Math.min(100, Math.round((c.currentHP / c.maxHP) * 100)))
+  //       : 0;
+  //   fill.style.width = pct + '%';
+  // }
+
+  // Update separate current / max / temp elements
+  const curEl = document.getElementById('hp-current');
+  const maxEl = document.getElementById('hp-max');
+  if (curEl) curEl.textContent = c.currentHP;
+  if (maxEl) maxEl.textContent = c.maxHP;
+
+>>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
   const tempInline = document.getElementById('hp-temp-inline');
   if (tempInline) tempInline.value = c.tempHP && c.tempHP > 0 ? c.tempHP : '';
 

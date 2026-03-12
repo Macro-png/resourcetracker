@@ -42,14 +42,23 @@
     <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive">Concentrating</div>
 
     <!-- HP CARD -->
+<<<<<<< HEAD
     <section class="card hp-card">
       <div class="hp-main-row">
         <div class="hp-actions">
           <button id="hp-add" class="hp-action-pill heal">HEAL</button>
+=======
+    <!-- <section class="card hp-card">
+      <div class="hp-main-row">
+        <div class="hp-actions">
+          <button id="hp-add" class="hp-btn hp-btn-heal">Heal</button>
+
+>>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
           <input
             id="hp-update-amount"
             type="number"
             min="0"
+<<<<<<< HEAD
             class="hp-input hp-amount-input"
             aria-label="HP adjustment amount"
           />
@@ -82,6 +91,84 @@
             />
           </div>
         </div>
+=======
+            value="1"
+            class="hp-input"
+            aria-label="HP adjustment amount"
+          />
+
+          <button id="hp-subtract" class="hp-btn hp-btn-damage">Damage</button>
+        </div>
+
+        <div class="hp-values">
+          <div class="hp-labels">
+            <span>Current</span>
+            <span>Max</span>
+          </div>
+          <div class="hp-numbers">
+            <span id="hp-current">0</span>
+            <span class="slash">/</span>
+            <span id="hp-max">0</span>
+          </div>
+
+          <div class="hp-subtitle">Hit points</div>
+        </div>
+
+        <div class="hp-temp">
+          <span class="hp-label">Temp</span>
+          <span id="hp-temp">--</span>
+        </div>
+      </div>
+
+      <div class="hp-bar" aria-hidden="true">
+        <div id="hp-bar-fill" class="hp-bar-fill"></div>
+      </div>
+    </section> -->
+    <section class="card hp-card">
+      <div class="hp-main-row">
+        <div class="hp-actions">
+          <button id="hp-add" class="hp-action-pill heal">HEAL</button>
+          <input
+            id="hp-update-amount"
+            type="number"
+            min="0"
+            class="hp-input hp-amount-input"
+            aria-label="HP adjustment amount"
+          />
+          <button id="hp-subtract" class="hp-action-pill damage">DAMAGE</button>
+        </div>
+
+
+          <div class="hp-values">
+            <div class="hp-labels">
+              <span>Current</span>
+              <span>Max</span>
+            </div>
+            <div class="hp-numbers" role="status" aria-live="polite">
+              <span id="hp-current">0</span>
+              <span class="slash">/</span>
+              <span id="hp-max">0</span>
+            </div>
+            <div class="hp-subtitle">HIT POINTS</div>
+          </div>
+          
+          <div class="hp-temp">
+            <div class="hp-temp-label">Temp</div>
+            
+            <div>
+              <input
+                id="hp-temp-inline"
+                type="number"
+                min="0"
+                class="hp-temp-inline-input"
+                placeholder="--"
+                aria-label="Temporary HP"
+              />
+            </div>
+
+          </div>
+
+>>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
       </div>
 
       <div class="hp-bar" aria-hidden="true">
@@ -496,6 +583,10 @@
 
       const tempInline = document.getElementById('hp-temp-inline');
       if (tempInline){
+<<<<<<< HEAD
+=======
+        // Persist temp HP when changed and re-render
+>>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
         tempInline.addEventListener('change', () => {
           const v = Math.max(0, parseInt(tempInline.value, 10) || 0);
           const st = window.state || {};
@@ -505,6 +596,13 @@
           window.saveState && window.saveState();
           window.renderSession && window.renderSession();
         });
+<<<<<<< HEAD
+=======
+
+        // allow Enter to commit (blur triggers change)
+        tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
+      }
+>>>>>>> 1d2d4e83e6b9be1574b8d5100f2d9d9fc9fdbf80
 
         tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
       }
