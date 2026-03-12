@@ -368,8 +368,9 @@ function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLev
 // ─── Conditions & Concentration ───────────────────────────────────────────────
 
 const STANDARD_CONDITIONS = [
+  'Prone', 'Unconscious',
   'Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated',
-  'Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'
+  'Invisible','Paralyzed','Petrified','Poisoned','Restrained','Stunned'
 ];
 
 const IMPLIED_CONDITIONS = {
@@ -405,19 +406,13 @@ function toggleCondition(c, name) {
   } else {
     c.statuses.push({ id: crypto.randomUUID(), name, remaining: 0, durationType: 'rest' });
     (IMPLIED_CONDITIONS[name] || []).forEach(imp => {
-      if (!hasCondition(c, imp)) {
+      const existing = c.statuses.find(s => s.name === imp);
+      if (!existing) {
         c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
+      } else {
+        existing.implied = true;
       }
     });
-    // FIX THE MAIN CONDITION NOT BEING SELECTED
-    // (IMPLIED_CONDITIONS[name] || []).forEach(imp => {
-    //   const existing = c.statuses.find(s => s.name === imp);
-    //   if (!existing) {
-    //     c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
-    //   } else {
-    //     existing.implied = true;
-    //   }
-    // });
   }
   saveState();
   renderSession();
@@ -437,6 +432,8 @@ function toggleConcentration(c) {
 }
 
 function renderStatuses(c) {
+  if (!('exhaustion' in c)) c.exhaustion = 0;
+
   const grid = document.getElementById('condition-grid');
   if (!grid) return;
   grid.innerHTML = '';
@@ -473,6 +470,45 @@ function renderStatuses(c) {
     banner.hidden = !conc;
     if (conc) banner.textContent = `${c.name} is concentrating. Damage while concentrating requires a CON save to maintain it, with a separate save for each damage source.`;
   }
+  
+  const exRow = document.createElement('div');
+  exRow.className = 'exhaustion-row';
+
+  const exTitle = document.createElement('div');
+  exTitle.className = 'exhaustion-title';
+  exTitle.textContent = 'Exhaustion';
+  exRow.appendChild(exTitle);
+
+  const exBoxes = document.createElement('div');
+  exBoxes.className = 'exhaustion-boxes';
+
+  for (let i = 0; i < 6; i++) {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'slot-toggle';
+    wrapper.title = `Exhaustion level ${i + 1}`;
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'slot-checkbox';
+    cb.checked = c.exhaustion > i;
+    cb.setAttribute('aria-label', `Exhaustion level ${i + 1}`);
+    cb.addEventListener('change', () => {
+      c.exhaustion = cb.checked
+        ? Math.min(6, c.exhaustion + 1)
+        : Math.max(0, c.exhaustion - 1);
+      saveState(); renderSession();
+    });
+    const box = document.createElement('span');
+    box.className = 'slot-box';
+
+    wrapper.appendChild(cb);
+    wrapper.appendChild(box);
+    exBoxes.appendChild(wrapper);
+  }
+
+  exRow.appendChild(exBoxes);
+  grid.appendChild(exRow);
+
 }
 
 // ─── Rests ────────────────────────────────────────────────────────────────────
@@ -492,7 +528,7 @@ function longRest() {
   c.spellSlots.forEach(s => { if (s.recoversOn === 'long' || s.recoversOn === 'short') s.used = 0; });
   c.currentHP = c.maxHP;
   c.tempHP = 0;
-  c.deathSaves = { success: 0, failure: 0 };
+  c.exhaustion = Math.max(0, (c.exhaustion || 0) - 1);
   saveState(); renderSession();
 }
 
