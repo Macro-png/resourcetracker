@@ -104,6 +104,16 @@ function renderSession() {
   const c = getSelectedCharacter();
   if (!c) return;
 
+  document.getElementById('dead-card').hidden = true;
+  document.getElementById('hp-card').hidden = false;
+  document.getElementById('spellslots-section').hidden = false;
+  document.getElementById('resources-section').hidden = false;
+  document.getElementById('conditions-section').hidden = false;
+  document.getElementById('concentration-toggle').hidden = false;
+  document.getElementById('rest-section').hidden = false;
+  document.getElementById('death-saves-card').hidden = true;
+  document.getElementById('concentration-banner').hidden = true;
+
   document.body.classList.toggle('concentrating', !!getConcentration(c));
   document.getElementById("character-name").textContent = c.name;
 
@@ -123,6 +133,26 @@ function renderSession() {
     fill.style.width = pct + '%';
   }
 
+  const banner = document.getElementById('concentration-banner');
+  if (banner) banner.hidden = true;
+
+  if (c.dead) {
+    document.getElementById('spellslots-section').hidden = true;
+    document.getElementById('resources-section').hidden = true;
+    document.getElementById('death-saves-card').hidden = true;
+    document.getElementById('conditions-section').hidden = true;
+    document.getElementById('concentration-toggle').hidden = true;
+    document.getElementById('rest-section').hidden = true;
+    document.getElementById('hp-card').hidden = true;
+    document.getElementById('dead-card').hidden = false;
+    document.getElementById('dead-name').textContent = `${c.name} has fallen`;
+    return;
+  }
+
+  document.getElementById('spellslots-section').hidden = c.currentHP === 0;
+  document.getElementById('resources-section').hidden = c.currentHP === 0;
+
+  renderDeathSaves(c);
   renderResources(c);
   renderSpellSlots(c);
   renderStatuses(c);
@@ -133,12 +163,40 @@ function renderSession() {
 function applyDamage(amount) {
   const c = getSelectedCharacter();
   if (!c) return;
+
   if (c.tempHP > 0) {
     const absorbed = Math.min(c.tempHP, amount);
     c.tempHP -= absorbed;
     amount -= absorbed;
   }
+
+  const hpBefore = c.currentHP;
   c.currentHP = Math.max(0, c.currentHP - amount);
+
+  if (c.currentHP === 0 && (amount - hpBefore) >= c.maxHP) {
+    c.dead = true;
+    c.deathSaves = { success: 0, failure: 0 };
+    delete c.concentration;
+    saveState(); renderSession();
+    showToast(`${c.name} suffered massive damage and died instantly!`);
+    return;
+  }
+  
+  c.currentHP = Math.max(0, c.currentHP - amount);
+  if (c.currentHP === 0) {
+    delete c.concentration;
+    if (!hasCondition(c, 'Unconscious')) {
+      c.statuses.push({ id: crypto.randomUUID(), name: 'Unconscious', remaining: 0, durationType: 'rest' });
+      ['Incapacitated', 'Prone'].forEach(imp => {
+        const existing = c.statuses.find(s => s.name === imp);
+        if (!existing) {
+          c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
+        } else {
+          existing.implied = true;
+        }
+      });
+    }
+  }
   saveState();
   renderSession();
   if (amount > 0 && getConcentration(c)) {
@@ -155,6 +213,55 @@ function heal(amount) {
   c.currentHP = Math.min(c.maxHP, c.currentHP + amount);
   saveState();
   renderSession();
+}
+
+// ─── Death Saves ──────────────────────────────────────────────────────────────
+
+function renderDeathSaves(c) {
+  const card = document.getElementById('death-saves-card');
+  if (!card) return;
+  card.hidden = c.currentHP > 0;
+  if (c.currentHP > 0) return;
+
+  ['success', 'failure'].forEach(type => {
+    const container = document.getElementById(`death-${type}-boxes`);
+    container.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const wrapper = document.createElement('label');
+      wrapper.className = 'slot-toggle';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'slot-checkbox';
+      cb.checked = c.deathSaves[type] > i;
+      cb.addEventListener('change', () => {
+        c.deathSaves[type] = cb.checked
+          ? Math.min(3, c.deathSaves[type] + 1)
+          : Math.max(0, c.deathSaves[type] - 1);
+
+        if (c.deathSaves.success === 3) {
+          c.currentHP = 1;
+          c.deathSaves = { success: 0, failure: 0 };
+          showToast(`${c.name} is stable!`);
+        }
+        if (c.deathSaves.failure === 3) {
+          c.dead = true;
+          c.deathSaves = { success: 0, failure: 0 };
+          saveState(); renderSession();
+          return;
+        }
+
+        saveState(); renderSession();
+      });
+
+      const box = document.createElement('span');
+      box.className = 'slot-box';
+
+      wrapper.appendChild(cb);
+      wrapper.appendChild(box);
+      container.appendChild(wrapper);
+    }
+  });
 }
 
 // ─── Resources ────────────────────────────────────────────────────────────────
@@ -433,6 +540,14 @@ function toggleConcentration(c) {
 
 function renderStatuses(c) {
   if (!('exhaustion' in c)) c.exhaustion = 0;
+
+  if (c.exhaustion === 6) {
+    c.dead = true;
+    c.deathSaves = { success: 0, failure: 0 };
+    delete c.concentration;
+    saveState(); renderSession();
+    showToast(`${c.name} has succumbed to exhaustion!`);
+  }
 
   const grid = document.getElementById('condition-grid');
   if (!grid) return;
@@ -835,6 +950,24 @@ try {
   console.error('Error rendering initial UI:', err);
 }
 
-document.getElementById('concentration-modal-dismiss').addEventListener('click', () => {
+document.getElementById('concentration-modal-fail').addEventListener('click', () => {
+  const c = getSelectedCharacter();
+  if (c) { delete c.concentration; saveState(); renderSession(); }
   document.getElementById('concentration-modal').hidden = true;
+});
+
+document.getElementById('concentration-modal-success').addEventListener('click', () => {
+  document.getElementById('concentration-modal').hidden = true;
+});
+
+document.getElementById('revive-btn').addEventListener('click', () => {
+  const c = getSelectedCharacter();
+  if (!c) return;
+  c.dead = false;
+  c.currentHP = 1;
+  c.deathSaves = { success: 0, failure: 0 };
+  c.statuses = [];
+  c.exhaustion = 0;
+  saveState(); renderSession();
+  showToast(`${c.name} has been revived!`);
 });

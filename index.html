@@ -31,64 +31,82 @@
       <button id="back-btn" class="link-btn">← Back</button>
       <div class="session-title-block">
         <h2 id="character-name" class="character-title"></h2>
-        <button id="concentration-toggle" class="concentration-under-btn" aria-pressed="false" aria-label="Toggle concentration">Concentrate</button>
       </div>
     </div>
 
     <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive"></div>
 
     <!-- HP -->
-    <section class="card hp-card">
-      <div class="hp-main-row">
-        <div class="hp-actions">
-          <button id="hp-add" class="hp-action-pill heal">HEAL</button>
-          <input id="hp-update-amount" type="number" min="0" class="hp-input hp-amount-input" aria-label="HP adjustment amount" />
-          <button id="hp-subtract" class="hp-action-pill damage">DAMAGE</button>
-        </div>
-        <div class="hp-values">
-          <div class="hp-labels"><span>Current</span><span>Max</span></div>
-          <div class="hp-numbers" role="status" aria-live="polite">
-            <span id="hp-current">0</span>
-            <span class="slash">/</span>
-            <span id="hp-max">0</span>
-          </div>
-          <div class="hp-subtitle">HIT POINTS</div>
-        </div>
-        <div class="hp-temp">
-          <div class="hp-temp-label">Temp</div>
-          <input id="hp-temp-inline" type="number" min="0" class="hp-temp-inline-input" placeholder="--" aria-label="Temporary HP" />
+    <section id="hp-card" class="card hp-card">
+      <div class="hp-pill">
+        <div class="hp-pill-label">HIT POINTS</div>
+        <div class="hp-pill-numbers" role="status" aria-live="polite">
+          <span id="hp-current">0</span>
+          <span class="slash">/</span>
+          <span id="hp-max">0</span>
         </div>
       </div>
       <div class="hp-bar" aria-hidden="true">
         <div id="hp-bar-fill" class="hp-bar-fill" style="width:100%"></div>
       </div>
+      <div class="hp-controls-row">
+        <button id="hp-subtract" class="hp-action-pill damage">DMG</button>
+        <input id="hp-update-amount" type="number" min="0" class="hp-amount-input" aria-label="HP amount" />
+        <button id="hp-add" class="hp-action-pill heal">HEAL</button>
+      </div>
+      <div class="hp-temp-row">
+        <span class="hp-temp-label">Temp HP</span>
+        <input id="hp-temp-inline" type="number" min="0" class="hp-temp-inline-input" placeholder="0" aria-label="Temporary HP" />
+      </div>
+    </section>
+
+    <!-- DEATH SAVES -->
+    <section id="death-saves-card" class="card" hidden>
+      <h3>Death Saves</h3>
+      <div class="death-saves-row">
+        <div class="death-col">
+          <div class="death-saves-label success-label">Successes</div>
+          <div id="death-success-boxes" class="death-boxes"></div>
+        </div>
+        <div class="death-col">
+          <div class="death-saves-label failure-label">Failures</div>
+          <div id="death-failure-boxes" class="death-boxes"></div>
+        </div>
+      </div>
     </section>
 
     <!-- SPELL SLOTS -->
-    <section class="card">
+    <section id="spellslots-section" class="card">
       <h3>Spell Slots</h3>
+      <button id="concentration-toggle" class="concentration-under-btn" aria-pressed="false" aria-label="Toggle concentration" style="width:100%; margin-bottom:0.5rem;">Concentrate</button>
       <div id="spellslots-container"></div>
       <button id="add-spellslot-btn" class="link-btn">+ Add Spell Slot</button>
     </section>
 
     <!-- RESOURCES -->
-    <section class="card">
+    <section id="resources-section" class="card">
       <h3>Resources</h3>
       <div id="resources-container"></div>
       <button id="add-resource-btn" class="link-btn">+ Add Resource</button>
     </section>
 
     <!-- CONDITIONS -->
-    <section class="card">
+    <section id="conditions-section" class="card">
       <h3>Conditions</h3>
       <div id="condition-grid" class="condition-grid" aria-label="Standard conditions"></div>
     </section>
 
     <!-- REST -->
-    <section class="row card actions">
+    <section id="rest-section" class="row card actions">
       <button id="short-rest" class="rest-btn primary-btn">Short Rest</button>
       <button id="long-rest" class="rest-btn primary-btn">Long Rest</button>
     </section>
+
+    <div id="dead-card" class="card dead-card" hidden>
+      <div class="dead-skull">💀</div>
+      <div id="dead-name" class="dead-name"></div>
+      <button id="revive-btn" class="hp-action-pill heal">Revive</button>
+    </div>
   </main>
 
   <!-- MODALS -->
@@ -159,7 +177,8 @@
       <h3>⚠️ Concentration Check!</h3>
       <p id="concentration-modal-text" style="margin: 1rem 0"></p>
       <div class="row">
-        <button id="concentration-modal-dismiss" class="primary-btn">Dismiss</button>
+        <button id="concentration-modal-fail" class="hp-action-pill damage">Fail</button>
+        <button id="concentration-modal-success" class="hp-action-pill heal">Success</button>
       </div>
     </div>
   </div>
