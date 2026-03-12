@@ -46,11 +46,6 @@
       <div class="hp-main-row">
         <div class="hp-actions">
           <button id="hp-add" class="hp-action-pill heal">HEAL</button>
-    <!-- <section class="card hp-card">
-      <div class="hp-main-row">
-        <div class="hp-actions">
-          <button id="hp-add" class="hp-btn hp-btn-heal">Heal</button>
-
           <input
             id="hp-update-amount"
             type="number"
@@ -87,82 +82,6 @@
             />
           </div>
         </div>
-            value="1"
-            class="hp-input"
-            aria-label="HP adjustment amount"
-          />
-
-          <button id="hp-subtract" class="hp-btn hp-btn-damage">Damage</button>
-        </div>
-
-        <div class="hp-values">
-          <div class="hp-labels">
-            <span>Current</span>
-            <span>Max</span>
-          </div>
-          <div class="hp-numbers">
-            <span id="hp-current">0</span>
-            <span class="slash">/</span>
-            <span id="hp-max">0</span>
-          </div>
-
-          <div class="hp-subtitle">Hit points</div>
-        </div>
-
-        <div class="hp-temp">
-          <span class="hp-label">Temp</span>
-          <span id="hp-temp">--</span>
-        </div>
-      </div>
-
-      <div class="hp-bar" aria-hidden="true">
-        <div id="hp-bar-fill" class="hp-bar-fill"></div>
-      </div>
-    </section> -->
-    <section class="card hp-card">
-      <div class="hp-main-row">
-        <div class="hp-actions">
-          <button id="hp-add" class="hp-action-pill heal">HEAL</button>
-          <input
-            id="hp-update-amount"
-            type="number"
-            min="0"
-            class="hp-input hp-amount-input"
-            aria-label="HP adjustment amount"
-          />
-          <button id="hp-subtract" class="hp-action-pill damage">DAMAGE</button>
-        </div>
-
-
-          <div class="hp-values">
-            <div class="hp-labels">
-              <span>Current</span>
-              <span>Max</span>
-            </div>
-            <div class="hp-numbers" role="status" aria-live="polite">
-              <span id="hp-current">0</span>
-              <span class="slash">/</span>
-              <span id="hp-max">0</span>
-            </div>
-            <div class="hp-subtitle">HIT POINTS</div>
-          </div>
-          
-          <div class="hp-temp">
-            <div class="hp-temp-label">Temp</div>
-            
-            <div>
-              <input
-                id="hp-temp-inline"
-                type="number"
-                min="0"
-                class="hp-temp-inline-input"
-                placeholder="--"
-                aria-label="Temporary HP"
-              />
-            </div>
-
-          </div>
-
       </div>
 
       <div class="hp-bar" aria-hidden="true">
@@ -320,8 +239,7 @@
         <div class="slot-center">
           <div class="spellslot-controls resource-controls" data-key="controls"></div>
         </div>
-        <div class="slot-right">
-        </div>
+        <div class="slot-right"></div>
       </div>
     </div>
   </template>
@@ -336,19 +254,16 @@
         <div class="slot-center">
           <div class="spellslot-controls" data-key="controls"></div>
         </div>
-        <div class="slot-right">
-        </div>
+        <div class="slot-right"></div>
       </div>
     </div>
   </template>
 
-  <!-- ✅ ADDED: Toast notification element (was missing, referenced in app.js showToast()) -->
   <div id="toast" class="toast" hidden aria-live="polite"></div>
 
   <script>
-    // Small UI glue that uses the global state defined in app.js
     (function () {
-      // Service worker registration and PWA install prompt handling
+      // Service worker & PWA install
       let deferredPrompt;
       const installBtn = document.getElementById('pwa-install-btn');
 
@@ -374,7 +289,7 @@
           .catch(err => console.warn('SW register failed', err));
       }
 
-      // Export / Import handlers
+      // Export / Import
       const exportBtn = document.getElementById('export-btn');
       const importBtn = document.getElementById('import-btn');
       const importFile = document.getElementById('import-file');
@@ -414,19 +329,17 @@
         }
       });
 
-      // Modal: Add character (works alongside existing prompt-based flow)
+      // Add character modal
       const addBtn = document.getElementById('add-character-btn');
       const modal = document.getElementById('character-modal');
       const form = document.getElementById('character-form');
       const cancel = document.getElementById('character-cancel');
 
-      // Open modal and focus the name field
       addBtn.addEventListener('click', () => {
         modal.hidden = false;
         document.getElementById('character-form-name').focus();
       });
 
-      // Close modal handlers & ESC key support
       cancel.addEventListener('click', () => {
         modal.hidden = true;
         addBtn.focus();
@@ -439,14 +352,12 @@
         }
       });
 
-      // Form validation and submission with feedback
       const nameInput = document.getElementById('character-form-name');
       const maxInput = document.getElementById('character-form-maxhp');
       const saveButton = document.getElementById('character-save');
       const formError = document.getElementById('character-form-error');
 
-      function validateForm(){
-
+      function validateForm() {
         formError.hidden = true;
         const name = nameInput.value.trim();
         const max = parseInt(maxInput.value, 10);
@@ -460,43 +371,36 @@
           saveButton.disabled = true;
           return false;
         }
-
         if (!Number.isInteger(max) || max < 1) {
           formError.textContent = 'Max HP must be a positive number.';
           formError.hidden = false;
           saveButton.disabled = true;
           return false;
         }
-
         if (!Number.isInteger(full) || full < 0 || full > 20) {
           formError.textContent = 'Full caster level must be between 0 and 20.';
           formError.hidden = false;
           saveButton.disabled = true;
           return false;
         }
-
         if (!Number.isInteger(half) || half < 0 || half > 20) {
           formError.textContent = 'Half caster level must be between 0 and 20.';
           formError.hidden = false;
           saveButton.disabled = true;
           return false;
         }
-
         if (!Number.isInteger(pact) || pact < 0 || pact > 20) {
           formError.textContent = 'Pact magic level must be between 0 and 20.';
           formError.hidden = false;
           saveButton.disabled = true;
           return false;
         }
-
-        // Total levels cannot exceed 20
         if ((full || 0) + (half || 0) + (pact || 0) > 20) {
           formError.textContent = 'Character level cannot exceed 20.';
           formError.hidden = false;
           saveButton.disabled = true;
           return false;
         }
-
         saveButton.disabled = false;
         return true;
       }
@@ -538,29 +442,30 @@
         window.saveState && window.saveState();
         window.renderCharacterList && window.renderCharacterList();
 
-        // Close and reset form
         modal.hidden = true;
         form.reset();
         saveButton.disabled = true;
         addBtn.focus();
 
-        // Highlight, auto-open and scroll to new list item
         setTimeout(() => {
           const li = document.querySelector(`[data-id="${newCharacter.id}"]`);
-          if (li){
+          if (li) {
             li.scrollIntoView({ behavior: 'smooth', block: 'center' });
             li.classList.add('highlight');
             li.click();
-            setTimeout(()=> li.classList.remove('highlight'), 1500);
+            setTimeout(() => li.classList.remove('highlight'), 1500);
           }
         }, 50);
 
-        const slotSummary = newCharacter.spellSlots.length ? newCharacter.spellSlots.map(s => `${s.level}L:${s.max}${s.pact ? ' (pact)' : ''}`).join(', ') : 'No spell slots';
-        showToast(`Added '${newCharacter.name}' and opened character — ${slotSummary}`);
+        const slotSummary = newCharacter.spellSlots.length
+          ? newCharacter.spellSlots.map(s => `${s.level}L:${s.max}${s.pact ? ' (pact)' : ''}`).join(', ')
+          : 'No spell slots';
+        showToast(`Added '${newCharacter.name}' — ${slotSummary}`);
       });
 
-      // HP updater wiring: add/subtract amount and set temporary HP
+      // HP buttons (wired once here, not inside renderSession)
       const hpAmountInput = document.getElementById('hp-update-amount');
+
       document.getElementById('hp-add').addEventListener('click', () => {
         const v = Math.max(0, parseInt(hpAmountInput.value, 10) || 0);
         if (!v) return;
@@ -576,8 +481,7 @@
       });
 
       const tempInline = document.getElementById('hp-temp-inline');
-      if (tempInline){
-        // Persist temp HP when changed and re-render
+      if (tempInline) {
         tempInline.addEventListener('change', () => {
           const v = Math.max(0, parseInt(tempInline.value, 10) || 0);
           const st = window.state || {};
@@ -587,11 +491,6 @@
           window.saveState && window.saveState();
           window.renderSession && window.renderSession();
         });
-
-        // allow Enter to commit (blur triggers change)
-        tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
-      }
-
         tempInline.addEventListener('keydown', (e) => { if (e.key === 'Enter') tempInline.blur(); });
       }
 
@@ -600,7 +499,7 @@
         window.shortRest && window.shortRest();
         showToast('Short rest: restored short-rest resources and slots');
         const fill = document.getElementById('hp-bar-fill');
-        if (fill){ fill.classList.add('hp-bar-flash'); setTimeout(()=>fill.classList.remove('hp-bar-flash'), 700); }
+        if (fill) { fill.classList.add('hp-bar-flash'); setTimeout(() => fill.classList.remove('hp-bar-flash'), 700); }
       });
 
       document.getElementById('long-rest').addEventListener('click', () => {
@@ -608,10 +507,10 @@
         window.longRest && window.longRest();
         showToast('Long rest: HP and long-rest resources restored');
         const fill = document.getElementById('hp-bar-fill');
-        if (fill){ fill.classList.add('hp-bar-flash'); setTimeout(()=>fill.classList.remove('hp-bar-flash'), 900); }
+        if (fill) { fill.classList.add('hp-bar-flash'); setTimeout(() => fill.classList.remove('hp-bar-flash'), 900); }
       });
 
-      // Resource modal handlers
+      // Resource modal
       const resourceModal = document.getElementById('resource-modal');
       const resourceForm = document.getElementById('resource-form');
       const resourceName = document.getElementById('resource-form-name');
@@ -655,7 +554,7 @@
         showToast(`Added resource '${name}' (recovers: ${recoversOn})`);
       });
 
-      // Spell slot modal handlers
+      // Spell slot modal
       const slotModal = document.getElementById('spellslot-modal');
       const slotForm = document.getElementById('spellslot-form');
       const slotLevel = document.getElementById('spellslot-form-level');
@@ -703,7 +602,6 @@
     })();
   </script>
 
-  <div id="toast" class="toast" hidden aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
 </html>

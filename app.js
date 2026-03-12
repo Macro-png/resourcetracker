@@ -126,7 +126,6 @@ function renderCharacterList() {
   });
 }
 
-
 document.getElementById("add-character-btn").addEventListener("click", () => {
   const modal = document.getElementById('character-modal');
   if (modal) {
@@ -151,52 +150,11 @@ function renderSession() {
   if (curEl) curEl.textContent = c.currentHP;
   if (maxEl) maxEl.textContent = c.maxHP;
 
-  document.getElementById('hp-add').addEventListener('click', () => {
-    const amount = parseInt(
-      document.getElementById('hp-update-amount').value,
-      10
-    ) || 0;
-
-    if (amount > 0) heal(amount);
-  });
-
-  document.getElementById('hp-subtract').addEventListener('click', () => {
-    const amount = parseInt(
-      document.getElementById('hp-update-amount').value,
-      10
-    ) || 0;
-
-    if (amount > 0) applyDamage(amount);
-  });
-
-  // // HP UI: current/max, temp badge and bar
-  // document.getElementById('hp-current').textContent = c.currentHP;
-  // document.getElementById('hp-max').textContent = c.maxHP;
-
-  // const tempEl = document.getElementById('hp-temp');
-  // tempEl.textContent = c.tempHP && c.tempHP > 0 ? c.tempHP : '--';
-
-  // // HP bar
-  // const fill = document.getElementById('hp-bar-fill');
-  // if (fill) {
-  //   const pct =
-  //     c.maxHP > 0
-  //       ? Math.max(0, Math.min(100, Math.round((c.currentHP / c.maxHP) * 100)))
-  //       : 0;
-  //   fill.style.width = pct + '%';
-  // }
-
-  // Update separate current / max / temp elements
-  const curEl = document.getElementById('hp-current');
-  const maxEl = document.getElementById('hp-max');
-  if (curEl) curEl.textContent = c.currentHP;
-  if (maxEl) maxEl.textContent = c.maxHP;
-
   const tempInline = document.getElementById('hp-temp-inline');
   if (tempInline) tempInline.value = c.tempHP && c.tempHP > 0 ? c.tempHP : '';
 
   const fill = document.getElementById('hp-bar-fill');
-  if (fill){
+  if (fill) {
     const pct = c.maxHP > 0 ? Math.max(0, Math.min(100, Math.round((c.currentHP / c.maxHP) * 100))) : 0;
     fill.style.width = pct + '%';
   }
@@ -271,7 +229,7 @@ function renderResources(c) {
     controls.appendChild(inc);
 
     const removeBtn = el.querySelector('.slot-remove');
-    if (removeBtn){
+    if (removeBtn) {
       removeBtn.addEventListener('click', () => {
         if (!confirm(`Remove resource "${r.name}"?`)) return;
         c.resources = c.resources.filter(x => x.id !== r.id);
@@ -349,7 +307,7 @@ function renderSpellSlots(c) {
     }
 
     const removeBtn = el.querySelector('.slot-remove');
-    if (removeBtn){
+    if (removeBtn) {
       removeBtn.addEventListener('click', () => {
         if (!confirm(`Remove spell slots level ${s.level}${s.pact ? ' (pact)' : ''}?`)) return;
         c.spellSlots = c.spellSlots.filter(x => x.id !== s.id);
@@ -366,21 +324,21 @@ const STANDARD_CONDITIONS = [
   'Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'
 ];
 
-function hasCondition(c, name){
+function hasCondition(c, name) {
   return c.statuses.some(s => s.name === name);
 }
 
-function showToast(msg, ms = 1200){
+function showToast(msg, ms = 1200) {
   const t = document.getElementById('toast');
   if (!t) return;
   t.textContent = msg;
   t.hidden = false;
   t.classList.add('show');
-  setTimeout(()=>{ t.classList.remove('show'); t.hidden = true; }, ms);
+  setTimeout(() => { t.classList.remove('show'); t.hidden = true; }, ms);
 }
 
-function toggleCondition(c, name){
-  if (hasCondition(c, name)){
+function toggleCondition(c, name) {
+  if (hasCondition(c, name)) {
     c.statuses = c.statuses.filter(s => s.name !== name);
   } else {
     c.statuses.push({ id: crypto.randomUUID(), name, remaining: 0, durationType: 'rest' });
@@ -389,11 +347,11 @@ function toggleCondition(c, name){
   renderSession();
 }
 
-function getConcentration(c){
+function getConcentration(c) {
   return c.concentration || null;
 }
 
-function setConcentration(c, spell){
+function setConcentration(c, spell) {
   if (spell && String(spell).trim()) {
     c.concentration = { spell: String(spell).trim(), since: Date.now() };
   } else {
@@ -403,15 +361,15 @@ function setConcentration(c, spell){
   renderSession();
 }
 
-function clearConcentration(c){
+function clearConcentration(c) {
   delete c.concentration;
   saveState();
   renderSession();
 }
 
-function toggleConcentration(c){
+function toggleConcentration(c) {
   const conc = getConcentration(c);
-  if (conc){
+  if (conc) {
     if (!confirm('Stop concentrating?')) return;
     clearConcentration(c);
   } else {
@@ -450,7 +408,7 @@ function computeSlotsForEffectiveLevel(eff) {
   return (table[Math.max(1, Math.min(20, eff))] || new Array(9).fill(0)).slice();
 }
 
-function computeHalfCasterSlots(level){
+function computeHalfCasterSlots(level) {
   const map = {
     1:  [0,0,0,0,0,0,0,0,0],
     2:  [2,0,0,0,0,0,0,0,0],
@@ -562,7 +520,7 @@ function renderStatuses(c) {
   });
 
   const grid = document.getElementById('condition-grid');
-  if (grid){
+  if (grid) {
     grid.innerHTML = '';
 
     STANDARD_CONDITIONS.forEach(cond => {
@@ -576,7 +534,7 @@ function renderStatuses(c) {
 
     const concBtn = document.getElementById('concentration-toggle');
     const conc = getConcentration(c);
-    if (concBtn){
+    if (concBtn) {
       concBtn.classList.toggle('active', !!conc);
       concBtn.setAttribute('aria-pressed', !!conc);
       concBtn.textContent = conc && conc.spell ? `Concentrating: ${conc.spell}` : 'Concentrate';
@@ -585,8 +543,8 @@ function renderStatuses(c) {
     }
 
     const banner = document.getElementById('concentration-banner');
-    if (banner){
-      if (conc){
+    if (banner) {
+      if (conc) {
         banner.hidden = false;
         banner.textContent = `${c.name} is concentrating${conc.spell ? ' on ' + conc.spell : ''} — if they take damage, they must make a CON save to maintain concentration.`;
       } else {
@@ -659,7 +617,7 @@ window.shortRest = shortRest;
 window.longRest = longRest;
 window.getSelectedCharacter = getSelectedCharacter;
 
-function verifyAppIntegrity(){
+function verifyAppIntegrity() {
   try {
     const eff20 = computeSlotsForEffectiveLevel(20);
     if (!Array.isArray(eff20) || eff20.length !== 9) throw new Error('computeSlotsForEffectiveLevel returned invalid table');
