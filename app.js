@@ -1,10 +1,6 @@
 // ─── State ───────────────────────────────────────────────────────────────────
 
-let state = {
-  characters: [],
-  selectedCharacterId: null
-};
-
+let state = { characters: [], selectedCharacterId: null };
 let editMode = false;
 
 function getSelectedCharacter() {
@@ -12,11 +8,11 @@ function getSelectedCharacter() {
 }
 
 function saveState() {
-  localStorage.setItem("dndTrackerState", JSON.stringify(state));
+  localStorage.setItem('dndTrackerState', JSON.stringify(state));
 }
 
 function loadState() {
-  const saved = localStorage.getItem("dndTrackerState");
+  const saved = localStorage.getItem('dndTrackerState');
   if (saved) state = JSON.parse(saved);
 }
 
@@ -25,59 +21,128 @@ loadState();
 // ─── Screens ─────────────────────────────────────────────────────────────────
 
 function showCharacterList() {
-  document.getElementById("session-screen").hidden = true;
-  document.getElementById("character-list-screen").hidden = false;
-  document.getElementById("app-header").hidden = false;
+  document.getElementById('session-screen').hidden = true;
+  document.getElementById('character-list-screen').hidden = false;
+  document.getElementById('app-header').hidden = false;
 }
 
 function showSession() {
-  document.getElementById("character-list-screen").hidden = true;
-  document.getElementById("session-screen").hidden = false;
-  document.getElementById("app-header").hidden = true;
+  document.getElementById('character-list-screen').hidden = true;
+  document.getElementById('session-screen').hidden = false;
+  document.getElementById('app-header').hidden = true;
+}
+
+// ─── Swipe to delete ─────────────────────────────────────────────────────────
+
+function makeSwipeable(el, onDelete) {
+  el.classList.add('swipe-item');
+
+  const bg = document.createElement('div');
+  bg.className = 'swipe-delete-bg';
+  bg.textContent = 'Delete';
+
+  const content = document.createElement('div');
+  content.className = 'swipe-content';
+  while (el.firstChild) content.appendChild(el.firstChild);
+
+  el.appendChild(bg);
+  el.appendChild(content);
+
+  let startX = 0, startY = 0, tracking = false;
+
+  content.addEventListener('touchstart', e => {
+    if (!editMode) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = false;
+  }, { passive: true });
+
+  content.addEventListener('touchmove', e => {
+    if (!editMode) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!tracking && Math.abs(dy) > Math.abs(dx)) return;
+    tracking = true;
+    const clamped = Math.max(-80, Math.min(0, dx));
+    content.style.transition = 'none';
+    content.style.transform = `translateX(${clamped}px)`;
+  }, { passive: true });
+
+  content.addEventListener('touchend', () => {
+    if (!editMode) return;
+    content.style.transition = 'transform 0.2s ease';
+    const x = new DOMMatrix(getComputedStyle(content).transform).m41;
+    if (x < -40) {
+      el.classList.add('swiped');
+      content.style.transform = 'translateX(-80px)';
+    } else {
+      el.classList.remove('swiped');
+      content.style.transform = '';
+    }
+  });
+
+  bg.addEventListener('click', () => {
+    if (!editMode) return;
+    el.style.transition = 'opacity 0.2s, max-height 0.25s';
+    el.style.overflow = 'hidden';
+    el.style.maxHeight = el.offsetHeight + 'px';
+    el.style.opacity = '1';
+    requestAnimationFrame(() => {
+      el.style.maxHeight = '0';
+      el.style.opacity = '0';
+    });
+    setTimeout(onDelete, 260);
+  });
+
+  // Tap elsewhere to close swipe
+  document.addEventListener('touchstart', e => {
+    if (!editMode) return;
+    if (!el.contains(e.target) && el.classList.contains('swiped')) {
+      el.classList.remove('swiped');
+      content.style.transition = 'transform 0.2s ease';
+      content.style.transform = '';
+    }
+  }, { passive: true });
 }
 
 // ─── Character List ───────────────────────────────────────────────────────────
 
 function renderCharacterList() {
-  const list = document.getElementById("character-list");
-  list.innerHTML = "";
+  const list = document.getElementById('character-list');
+  list.innerHTML = '';
 
   if (!state.characters || state.characters.length === 0) {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'card';
-    placeholder.innerHTML = `<p style="color:#cbd5e1; margin:0">No characters yet — tap <strong>+ Add Character</strong> to create one.</p>`;
-    list.appendChild(placeholder);
+    const p = document.createElement('div');
+    p.className = 'card';
+    p.innerHTML = `<p style="color:#cbd5e1;margin:0">No characters yet — tap <strong>+ Add Character</strong> to create one.</p>`;
+    list.appendChild(p);
     return;
   }
 
   state.characters.forEach(character => {
-    const li = document.createElement("li");
+    const li = document.createElement('li');
     li.dataset.id = character.id;
     li.tabIndex = 0;
     li.setAttribute('role', 'button');
-    li.style.cssText = "display:flex; align-items:center; gap:0.75rem; cursor:pointer;";
 
     const avatar = document.createElement('div');
     avatar.className = 'avatar';
     avatar.textContent = (character.name || '')
       .split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
-    const nameSpan = document.createElement("span");
+    const nameSpan = document.createElement('span');
     nameSpan.textContent = character.name;
-    nameSpan.style.flex = "1";
+    nameSpan.style.flex = '1';
 
-    const deleteBtn = document.createElement("button");
+    const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.setAttribute('aria-label', `Delete ${character.name}`);
-    deleteBtn.textContent = "✕";
-    deleteBtn.addEventListener("click", (e) => {
+    deleteBtn.textContent = '✕';
+    deleteBtn.addEventListener('click', e => {
       e.stopPropagation();
       if (!confirm(`Delete "${character.name}"?\nThis cannot be undone.`)) return;
       state.characters = state.characters.filter(c => c.id !== character.id);
-      if (state.selectedCharacterId === character.id) {
-        state.selectedCharacterId = null;
-        showCharacterList();
-      }
+      if (state.selectedCharacterId === character.id) state.selectedCharacterId = null;
       saveState();
       renderCharacterList();
     });
@@ -91,7 +156,7 @@ function renderCharacterList() {
       setTimeout(() => li.classList.remove('highlight'), 600);
     });
 
-    li.addEventListener('keydown', (e) => {
+    li.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); li.click(); }
     });
 
@@ -108,87 +173,88 @@ function renderSession() {
   const c = getSelectedCharacter();
   if (!c) return;
 
+  // Reset visibility
+  ['hp-card','spellslots-section','resources-section',
+   'conditions-section','rest-section'].forEach(id => {
+    document.getElementById(id).hidden = false;
+  });
   document.getElementById('dead-card').hidden = true;
-  document.getElementById('hp-card').hidden = false;
-  document.getElementById('spellslots-section').hidden = false;
-  document.getElementById('resources-section').hidden = false;
-  document.getElementById('conditions-section').hidden = false;
-  document.getElementById('concentration-toggle').hidden = false;
-  document.getElementById('rest-section').hidden = false;
   document.getElementById('death-saves-card').hidden = true;
   document.getElementById('concentration-banner').hidden = true;
+  document.getElementById('concentration-toggle').hidden = false;
 
-  document.body.classList.toggle('concentrating', !!getConcentration(c));
-  document.getElementById("character-name").textContent = c.name;
+  document.getElementById('character-name').textContent = c.name;
 
-  const curEl = document.getElementById('hp-current');
-  const maxEl = document.getElementById('hp-max');
-  if (curEl) curEl.textContent = c.currentHP;
-  if (maxEl) maxEl.textContent = c.maxHP;
+  // HP display
+  document.getElementById('hp-current').textContent = c.currentHP;
+  document.getElementById('hp-max').textContent = c.maxHP;
 
-  const tempInline = document.getElementById('hp-temp-inline');
-  if (tempInline) tempInline.value = c.tempHP > 0 ? c.tempHP : '';
+  const tempEl = document.getElementById('hp-temp-inline');
+  if (tempEl) tempEl.value = c.tempHP > 0 ? c.tempHP : '';
 
   const fill = document.getElementById('hp-bar-fill');
   if (fill) {
-    const pct = c.maxHP > 0
-      ? Math.max(0, Math.min(100, Math.round((c.currentHP / c.maxHP) * 100)))
-      : 0;
+    const pct = c.maxHP > 0 ? Math.max(0, Math.min(100, Math.round(c.currentHP / c.maxHP * 100))) : 0;
     fill.style.width = pct + '%';
   }
 
-  const banner = document.getElementById('concentration-banner');
-  if (banner) banner.hidden = true;
-
+  // Dead state
   if (c.dead) {
-    document.getElementById('spellslots-section').hidden = true;
-    document.getElementById('resources-section').hidden = true;
-    document.getElementById('death-saves-card').hidden = true;
-    document.getElementById('conditions-section').hidden = true;
+    ['hp-card','spellslots-section','resources-section',
+     'conditions-section','rest-section','death-saves-card'].forEach(id => {
+      document.getElementById(id).hidden = true;
+    });
     document.getElementById('concentration-toggle').hidden = true;
-    document.getElementById('rest-section').hidden = true;
-    document.getElementById('hp-card').hidden = true;
     document.getElementById('dead-card').hidden = false;
     document.getElementById('dead-name').textContent = `${c.name} has fallen`;
     return;
   }
 
-  document.getElementById('spellslots-section').hidden = c.currentHP === 0;
-  document.getElementById('resources-section').hidden = c.currentHP === 0;
+  // At 0 HP: hide spells/resources, show death saves
+  if (c.currentHP === 0) {
+    document.getElementById('spellslots-section').hidden = true;
+    document.getElementById('resources-section').hidden = true;
+  }
 
   renderDeathSaves(c);
-  renderResources(c);
   renderSpellSlots(c);
-  document.getElementById('add-resource-btn').hidden = !editMode;
-  document.getElementById('add-spellslot-btn').hidden = !editMode;
+  renderResources(c);
   renderStatuses(c);
+
+  // Add buttons controlled by editMode
+  document.getElementById('add-spellslot-btn').hidden = !editMode;
+  document.getElementById('add-resource-btn').hidden = !editMode;
 }
 
 // ─── HP ───────────────────────────────────────────────────────────────────────
 
 function applyDamage(amount) {
   const c = getSelectedCharacter();
-  if (!c) return;
+  if (!c || amount <= 0) return;
 
+  // Absorb temp HP first
   if (c.tempHP > 0) {
     const absorbed = Math.min(c.tempHP, amount);
     c.tempHP -= absorbed;
     amount -= absorbed;
   }
 
+  if (amount <= 0) { saveState(); renderSession(); return; }
+
   const hpBefore = c.currentHP;
   c.currentHP = Math.max(0, c.currentHP - amount);
 
-  if (c.currentHP === 0 && (amount - hpBefore) >= c.maxHP) {
+  // Massive damage = instant death
+  if (c.currentHP === 0 && amount >= hpBefore + c.maxHP) {
     c.dead = true;
     c.deathSaves = { success: 0, failure: 0 };
     delete c.concentration;
     saveState(); renderSession();
-    showToast(`${c.name} suffered massive damage and died instantly!`);
+    showToast(`${c.name} died from massive damage!`);
     return;
   }
-  
-  c.currentHP = Math.max(0, c.currentHP - amount);
+
+  // Dropped to 0
   if (c.currentHP === 0) {
     delete c.concentration;
     if (!hasCondition(c, 'Unconscious')) {
@@ -197,15 +263,16 @@ function applyDamage(amount) {
         const existing = c.statuses.find(s => s.name === imp);
         if (!existing) {
           c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
-        } else {
-          existing.implied = true;
-        }
+        } else { existing.implied = true; }
       });
     }
   }
+
   saveState();
   renderSession();
-  if (amount > 0 && getConcentration(c)) {
+
+  // Concentration check
+  if (getConcentration(c)) {
     const dc = Math.max(10, Math.floor(amount / 2));
     document.getElementById('concentration-modal-text').textContent =
       `${c.name} must make a DC ${dc} CON save to maintain concentration.`;
@@ -215,42 +282,35 @@ function applyDamage(amount) {
 
 function heal(amount) {
   const c = getSelectedCharacter();
-  if (!c) return;
+  if (!c || amount <= 0) return;
   c.currentHP = Math.min(c.maxHP, c.currentHP + amount);
 
+  // Remove Unconscious if healed above 0
   if (c.currentHP > 0 && hasCondition(c, 'Unconscious')) {
     c.statuses = c.statuses.filter(s => s.name !== 'Unconscious');
-    const stillImplied = new Set(
-      c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || [])
-    );
+    const stillImplied = new Set(c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || []));
     c.statuses.forEach(s => {
-      if (s.implied && STICKY_IMPLIED.has(s.name) && !stillImplied.has(s.name)) {
-        s.implied = false;
-      }
+      if (s.implied && STICKY_IMPLIED.has(s.name) && !stillImplied.has(s.name)) s.implied = false;
     });
-    c.statuses = c.statuses.filter(s =>
-      !s.implied || stillImplied.has(s.name) || STICKY_IMPLIED.has(s.name)
-    );
+    c.statuses = c.statuses.filter(s => !s.implied || stillImplied.has(s.name) || STICKY_IMPLIED.has(s.name));
   }
 
-  saveState();
-  renderSession();
+  saveState(); renderSession();
 }
 
 // ─── Death Saves ──────────────────────────────────────────────────────────────
 
 function renderDeathSaves(c) {
   const card = document.getElementById('death-saves-card');
-  if (!card) return;
   card.hidden = c.currentHP > 0;
   if (c.currentHP > 0) return;
 
   ['success', 'failure'].forEach(type => {
-    const container = document.getElementById(`death-${type}-boxes`);
-    container.innerHTML = '';
+    const box = document.getElementById(`death-${type}-boxes`);
+    box.innerHTML = '';
     for (let i = 0; i < 3; i++) {
-      const wrapper = document.createElement('label');
-      wrapper.className = 'slot-toggle';
+      const label = document.createElement('label');
+      label.className = 'slot-toggle';
 
       const cb = document.createElement('input');
       cb.type = 'checkbox';
@@ -261,27 +321,22 @@ function renderDeathSaves(c) {
           ? Math.min(3, c.deathSaves[type] + 1)
           : Math.max(0, c.deathSaves[type] - 1);
 
-        if (c.deathSaves.success === 3) {
+        if (c.deathSaves.success >= 3) {
           c.currentHP = 1;
           c.deathSaves = { success: 0, failure: 0 };
           showToast(`${c.name} is stable!`);
-        }
-        if (c.deathSaves.failure === 3) {
+        } else if (c.deathSaves.failure >= 3) {
           c.dead = true;
           c.deathSaves = { success: 0, failure: 0 };
-          saveState(); renderSession();
-          return;
         }
-
         saveState(); renderSession();
       });
 
-      const box = document.createElement('span');
-      box.className = 'slot-box';
-
-      wrapper.appendChild(cb);
-      wrapper.appendChild(box);
-      container.appendChild(wrapper);
+      const span = document.createElement('span');
+      span.className = 'slot-box';
+      label.appendChild(cb);
+      label.appendChild(span);
+      box.appendChild(label);
     }
   });
 }
@@ -293,7 +348,7 @@ document.getElementById('revive-btn').addEventListener('click', () => {
   c.currentHP = 1;
   c.deathSaves = { success: 0, failure: 0 };
   c.statuses = [];
-  c.exhaustion = 0;
+  c.exhaustion = Math.min(5, (c.exhaustion || 0) + 1);
   saveState(); renderSession();
   showToast(`${c.name} has been revived!`);
 });
@@ -302,7 +357,7 @@ document.getElementById('revive-btn').addEventListener('click', () => {
 
 function renderResources(c) {
   const container = document.getElementById('resources-container');
-  const template = document.getElementById('resource-template');
+  const template  = document.getElementById('resource-template');
   container.innerHTML = '';
 
   c.resources.forEach(r => {
@@ -313,41 +368,30 @@ function renderResources(c) {
     controls.innerHTML = '';
 
     const dec = document.createElement('button');
-    dec.className = 'decrement small-btn slot-decr';
-    dec.textContent = '-';
-    dec.addEventListener('click', () => {
-      r.current = Math.max(0, r.current - 1);
-      saveState(); renderSession();
-    });
+    dec.className = 'slot-decr';
+    dec.textContent = '−';
+    dec.addEventListener('click', () => { r.current = Math.max(0, r.current - 1); saveState(); renderSession(); });
 
     const val = document.createElement('div');
     val.className = 'resource-value';
     val.textContent = `${r.current} / ${r.max}`;
 
     const inc = document.createElement('button');
-    inc.className = 'increment small-btn slot-incr';
+    inc.className = 'slot-incr';
     inc.textContent = '+';
-    inc.addEventListener('click', () => {
-      r.current = Math.min(r.max, r.current + 1);
-      saveState(); renderSession();
-    });
+    inc.addEventListener('click', () => { r.current = Math.min(r.max, r.current + 1); saveState(); renderSession(); });
 
     controls.appendChild(dec);
     controls.appendChild(val);
     controls.appendChild(inc);
 
-    const removeBtn = el.querySelector('.slot-remove');
-    if (removeBtn) {
-      if (editMode) {
-        removeBtn.addEventListener('click', () => {
-          if (!confirm(`Remove resource "${r.name}"?`)) return;
-          c.resources = c.resources.filter(x => x.id !== r.id);
-          saveState(); renderSession();
-        });
-      } else {
-        removeBtn.hidden = true;
-      }
-    }
+    // Remove the old slot-remove button since we use swipe now
+    el.querySelector('.slot-remove')?.remove();
+
+    makeSwipeable(el, () => {
+      c.resources = c.resources.filter(x => x.id !== r.id);
+      saveState(); renderSession();
+    });
 
     container.appendChild(el);
   });
@@ -357,14 +401,15 @@ function renderResources(c) {
 
 function renderSpellSlots(c) {
   const container = document.getElementById('spellslots-container');
-  const template = document.getElementById('spellslot-template');
+  const template  = document.getElementById('spellslot-template');
   container.innerHTML = '';
 
+  // Sync pact flag
   if (Array.isArray(c.spellSlots)) {
     let changed = false;
     c.spellSlots.forEach(s => {
-      const shouldBePact = s.recoversOn === 'short';
-      if (!!s.pact !== shouldBePact) { s.pact = shouldBePact; changed = true; }
+      const should = s.recoversOn === 'short';
+      if (!!s.pact !== should) { s.pact = should; changed = true; }
     });
     if (changed) saveState();
   }
@@ -382,20 +427,20 @@ function renderSpellSlots(c) {
     const labelEl = el.querySelector('[data-key="level"]');
     labelEl.textContent = `Level ${s.level}`;
     if (s.pact) {
-      const span = document.createElement('span');
-      span.className = 'pact-badge';
-      span.textContent = 'Pact';
-      labelEl.appendChild(span);
+      const badge = document.createElement('span');
+      badge.className = 'pact-badge';
+      badge.textContent = 'Pact';
+      labelEl.appendChild(badge);
     }
 
     const controls = el.querySelector('[data-key="controls"]');
     controls.innerHTML = '';
 
     for (let i = 0; i < s.max; i++) {
-      const wrapper = document.createElement('label');
-      wrapper.className = 'slot-toggle';
+      const label = document.createElement('label');
+      label.className = 'slot-toggle';
       const title = `${s.pact ? 'Pact ' : ''}Slot ${i + 1} of level ${s.level}`;
-      wrapper.title = title;
+      label.title = title;
 
       const cb = document.createElement('input');
       cb.type = 'checkbox';
@@ -403,31 +448,24 @@ function renderSpellSlots(c) {
       cb.checked = (s.used || 0) > i;
       cb.setAttribute('aria-label', title);
       cb.addEventListener('change', () => {
-        s.used = Array.from(controls.querySelectorAll('input[type="checkbox"]'))
-          .filter(x => x.checked).length;
+        s.used = Array.from(controls.querySelectorAll('input[type="checkbox"]')).filter(x => x.checked).length;
         saveState();
       });
 
       const box = document.createElement('span');
       box.className = 'slot-box';
-
-      wrapper.appendChild(cb);
-      wrapper.appendChild(box);
-      controls.appendChild(wrapper);
+      label.appendChild(cb);
+      label.appendChild(box);
+      controls.appendChild(label);
     }
 
-    const removeBtn = el.querySelector('.slot-remove');
-    if (removeBtn) {
-      if (editMode) {
-        removeBtn.addEventListener('click', () => {
-          if (!confirm(`Remove spell slots level ${s.level}${s.pact ? ' (pact)' : ''}?`)) return;
-          c.spellSlots = c.spellSlots.filter(x => x.id !== s.id);
-          saveState(); renderSession();
-        });
-      } else {
-        removeBtn.hidden = true;
-      }
-    }
+    // Remove old remove button, use swipe instead
+    el.querySelector('.slot-remove')?.remove();
+
+    makeSwipeable(el, () => {
+      c.spellSlots = c.spellSlots.filter(x => x.id !== s.id);
+      saveState(); renderSession();
+    });
 
     container.appendChild(el);
   });
@@ -439,9 +477,9 @@ function computeSlotsForEffectiveLevel(eff) {
   eff = Math.max(0, Math.floor(eff || 0));
   if (eff < 1) return [0,0,0,0,0,0,0,0,0];
   const table = {
-    1:[2,0,0,0,0,0,0,0,0], 2:[3,0,0,0,0,0,0,0,0], 3:[4,2,0,0,0,0,0,0,0],
-    4:[4,3,0,0,0,0,0,0,0], 5:[4,3,2,0,0,0,0,0,0], 6:[4,3,3,0,0,0,0,0,0],
-    7:[4,3,3,1,0,0,0,0,0], 8:[4,3,3,2,0,0,0,0,0], 9:[4,3,3,3,1,0,0,0,0],
+    1:[2,0,0,0,0,0,0,0,0],2:[3,0,0,0,0,0,0,0,0],3:[4,2,0,0,0,0,0,0,0],
+    4:[4,3,0,0,0,0,0,0,0],5:[4,3,2,0,0,0,0,0,0],6:[4,3,3,0,0,0,0,0,0],
+    7:[4,3,3,1,0,0,0,0,0],8:[4,3,3,2,0,0,0,0,0],9:[4,3,3,3,1,0,0,0,0],
     10:[4,3,3,3,2,0,0,0,0],11:[4,3,3,3,2,1,0,0,0],12:[4,3,3,3,2,1,0,0,0],
     13:[4,3,3,3,2,1,1,0,0],14:[4,3,3,3,2,1,1,0,0],15:[4,3,3,3,2,1,1,1,0],
     16:[4,3,3,3,2,1,1,1,0],17:[4,3,3,3,2,1,1,1,1],18:[4,3,3,3,3,1,1,1,1],
@@ -452,9 +490,9 @@ function computeSlotsForEffectiveLevel(eff) {
 
 function computeHalfCasterSlots(level) {
   const map = {
-    1:[0,0,0,0,0,0,0,0,0], 2:[2,0,0,0,0,0,0,0,0], 3:[3,0,0,0,0,0,0,0,0],
-    4:[3,0,0,0,0,0,0,0,0], 5:[4,2,0,0,0,0,0,0,0], 6:[4,2,0,0,0,0,0,0,0],
-    7:[4,3,0,0,0,0,0,0,0], 8:[4,3,0,0,0,0,0,0,0], 9:[4,3,2,0,0,0,0,0,0],
+    1:[0,0,0,0,0,0,0,0,0],2:[2,0,0,0,0,0,0,0,0],3:[3,0,0,0,0,0,0,0,0],
+    4:[3,0,0,0,0,0,0,0,0],5:[4,2,0,0,0,0,0,0,0],6:[4,2,0,0,0,0,0,0,0],
+    7:[4,3,0,0,0,0,0,0,0],8:[4,3,0,0,0,0,0,0,0],9:[4,3,2,0,0,0,0,0,0],
     10:[4,3,2,0,0,0,0,0,0],11:[4,3,3,0,0,0,0,0,0],12:[4,3,3,0,0,0,0,0,0],
     13:[4,3,3,1,0,0,0,0,0],14:[4,3,3,1,0,0,0,0,0],15:[4,3,3,2,0,0,0,0,0],
     16:[4,3,3,2,0,0,0,0,0],17:[4,3,3,3,1,0,0,0,0],18:[4,3,3,3,1,0,0,0,0],
@@ -463,10 +501,10 @@ function computeHalfCasterSlots(level) {
   return map[Math.max(1, Math.min(20, level))] || [];
 }
 
-function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLevel) {
-  const full = Math.max(0, parseInt(fullCasterLevel || 0, 10));
-  let half = Math.max(0, parseInt(halfCasterLevel || 0, 10));
-  let pact = Math.max(0, parseInt(pactLevel || 0, 10));
+function buildSpellSlotsFromCasterInfo(full, half, pact) {
+  full = Math.max(0, parseInt(full || 0, 10));
+  half = Math.max(0, parseInt(half || 0, 10));
+  pact = Math.max(0, parseInt(pact || 0, 10));
 
   const total = full + half + pact;
   if (total > 20) {
@@ -474,7 +512,6 @@ function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLev
     if (pact >= over) { pact -= over; over = 0; }
     else { over -= pact; pact = 0; }
     if (over > 0) half = Math.max(0, half - over);
-    console.warn('Caster levels exceeded 20 and were adjusted.');
   }
 
   const slotsPerLevel = (full === 0 && half > 0)
@@ -487,24 +524,14 @@ function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLev
   });
 
   if (pact > 0) {
-    out.push({
-      id: crypto.randomUUID(),
-      level: Math.min(Math.ceil(pact / 2), 5),
-      max: pact === 1 ? 1 : 2,
-      used: 0,
-      recoversOn: 'short',
-      pact: true
-    });
+    out.push({ id: crypto.randomUUID(), level: Math.min(Math.ceil(pact / 2), 5), max: pact === 1 ? 1 : 2, used: 0, recoversOn: 'short', pact: true });
   }
 
   const merged = {};
   out.forEach(s => {
     const key = `${s.level}-${s.recoversOn}-${s.pact ? 'p' : 'c'}`;
     if (!merged[key]) merged[key] = { ...s };
-    else {
-      merged[key].max += s.max;
-      merged[key].used = Math.min(merged[key].max, merged[key].used + s.used);
-    }
+    else { merged[key].max += s.max; }
   });
 
   return Object.values(merged).sort((a, b) => {
@@ -514,10 +541,10 @@ function buildSpellSlotsFromCasterInfo(fullCasterLevel, halfCasterLevel, pactLev
   });
 }
 
-// ─── Conditions & Concentration ───────────────────────────────────────────────
+// ─── Conditions ───────────────────────────────────────────────────────────────
 
 const STANDARD_CONDITIONS = [
-  'Prone', 'Unconscious',
+  'Prone','Unconscious',
   'Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated',
   'Invisible','Paralyzed','Petrified','Poisoned','Restrained','Stunned'
 ];
@@ -526,45 +553,30 @@ const IMPLIED_CONDITIONS = {
   'Paralyzed':  ['Incapacitated'],
   'Stunned':    ['Incapacitated'],
   'Petrified':  ['Incapacitated'],
-  'Unconscious': ['Incapacitated', 'Prone'],
+  'Unconscious':['Incapacitated','Prone'],
 };
 
 const STICKY_IMPLIED = new Set(['Prone']);
 
-function hasCondition(c, name) {
-  return c.statuses.some(s => s.name === name);
-}
+function hasCondition(c, name) { return c.statuses.some(s => s.name === name); }
 
 function toggleCondition(c, name) {
   if (hasCondition(c, name)) {
     c.statuses = c.statuses.filter(s => s.name !== name);
-    // Recompute which implied conditions are still needed
-    const stillImplied = new Set(
-      c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || [])
-    );
-    // Unstick conditions that are no longer implied by anything
+    const stillImplied = new Set(c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || []));
     c.statuses.forEach(s => {
-      if (s.implied && STICKY_IMPLIED.has(s.name) && !stillImplied.has(s.name)) {
-        s.implied = false;
-      }
+      if (s.implied && STICKY_IMPLIED.has(s.name) && !stillImplied.has(s.name)) s.implied = false;
     });
-    // Remove implied conditions that were auto-added and no longer needed
-    c.statuses = c.statuses.filter(s =>
-      !s.implied || stillImplied.has(s.name) || STICKY_IMPLIED.has(s.name)
-    );
+    c.statuses = c.statuses.filter(s => !s.implied || stillImplied.has(s.name) || STICKY_IMPLIED.has(s.name));
   } else {
     c.statuses.push({ id: crypto.randomUUID(), name, remaining: 0, durationType: 'rest' });
     (IMPLIED_CONDITIONS[name] || []).forEach(imp => {
       const existing = c.statuses.find(s => s.name === imp);
-      if (!existing) {
-        c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
-      } else {
-        existing.implied = true;
-      }
+      if (!existing) c.statuses.push({ id: crypto.randomUUID(), name: imp, remaining: 0, durationType: 'rest', implied: true });
+      else existing.implied = true;
     });
   }
-  saveState();
-  renderSession();
+  saveState(); renderSession();
 }
 
 function getConcentration(c) { return c.concentration || null; }
@@ -576,19 +588,19 @@ function toggleConcentration(c) {
   } else {
     c.concentration = { since: Date.now() };
   }
-  saveState();
-  renderSession();
+  saveState(); renderSession();
 }
 
 function renderStatuses(c) {
   if (!('exhaustion' in c)) c.exhaustion = 0;
 
-  if (c.exhaustion === 6) {
+  if (c.exhaustion >= 6) {
     c.dead = true;
     c.deathSaves = { success: 0, failure: 0 };
     delete c.concentration;
     saveState(); renderSession();
     showToast(`${c.name} has succumbed to exhaustion!`);
+    return;
   }
 
   const grid = document.getElementById('condition-grid');
@@ -602,32 +614,35 @@ function renderStatuses(c) {
     const active = hasCondition(c, cond);
     const implied = active && c.statuses.find(s => s.name === cond)?.implied;
     if (active) btn.classList.add('active');
-    if (implied) btn.title = 'Applied automatically by another condition';
+    if (implied) { btn.classList.add('implied'); btn.title = 'Applied by another condition'; }
     btn.addEventListener('click', () => {
-      const stillNeeded = Object.entries(IMPLIED_CONDITIONS).some(
-        ([src, imps]) => imps.includes(cond) && hasCondition(c, src)
-      );
-      if (implied && stillNeeded) return;
+      if (implied) {
+        const stillNeeded = Object.entries(IMPLIED_CONDITIONS).some(([src, imps]) => imps.includes(cond) && hasCondition(c, src));
+        if (stillNeeded) return;
+      }
       toggleCondition(c, cond);
     });
     grid.appendChild(btn);
   });
 
+  // Concentration button
   const conc = getConcentration(c);
   const concBtn = document.getElementById('concentration-toggle');
   if (concBtn) {
     concBtn.classList.toggle('active', !!conc);
-    concBtn.setAttribute('aria-pressed', !!conc);
-    concBtn.textContent = conc && conc.spell ? `Concentrating: ${conc.spell}` : 'Concentrate';
+    concBtn.setAttribute('aria-pressed', String(!!conc));
+    concBtn.textContent = conc ? 'Concentrating ✓' : 'Concentrate';
     concBtn.onclick = () => toggleConcentration(c);
   }
 
+  // Banner
   const banner = document.getElementById('concentration-banner');
   if (banner) {
     banner.hidden = !conc;
-    if (conc) banner.textContent = `${c.name} is concentrating. Damage while concentrating requires a CON save to maintain it, with a separate save for each damage source.`;
+    if (conc) banner.textContent = `${c.name} is concentrating — taking damage requires a CON save to maintain it.`;
   }
-  
+
+  // Exhaustion row
   const exRow = document.createElement('div');
   exRow.className = 'exhaustion-row';
 
@@ -640,9 +655,9 @@ function renderStatuses(c) {
   exBoxes.className = 'exhaustion-boxes';
 
   for (let i = 0; i < 6; i++) {
-    const wrapper = document.createElement('label');
-    wrapper.className = 'slot-toggle';
-    wrapper.title = `Exhaustion level ${i + 1}`;
+    const label = document.createElement('label');
+    label.className = 'slot-toggle';
+    label.title = `Exhaustion ${i + 1}`;
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -650,23 +665,22 @@ function renderStatuses(c) {
     cb.checked = c.exhaustion > i;
     cb.setAttribute('aria-label', `Exhaustion level ${i + 1}`);
     cb.addEventListener('change', () => {
-      c.exhaustion = cb.checked
-        ? Math.min(6, c.exhaustion + 1)
-        : Math.max(0, c.exhaustion - 1);
+      c.exhaustion = cb.checked ? Math.min(6, c.exhaustion + 1) : Math.max(0, c.exhaustion - 1);
       saveState(); renderSession();
     });
+
     const box = document.createElement('span');
     box.className = 'slot-box';
-
-    wrapper.appendChild(cb);
-    wrapper.appendChild(box);
-    exBoxes.appendChild(wrapper);
+    label.appendChild(cb);
+    label.appendChild(box);
+    exBoxes.appendChild(label);
   }
 
   exRow.appendChild(exBoxes);
   grid.appendChild(exRow);
-
 }
+
+// ─── Concentration modal ──────────────────────────────────────────────────────
 
 document.getElementById('concentration-modal-fail').addEventListener('click', () => {
   const c = getSelectedCharacter();
@@ -691,17 +705,18 @@ function shortRest() {
 function longRest() {
   const c = getSelectedCharacter();
   if (!c) return;
-  c.resources.forEach(r => { if (r.recoversOn === 'long' || r.recoversOn === 'short') r.current = r.max; });
-  c.spellSlots.forEach(s => { if (s.recoversOn === 'long' || s.recoversOn === 'short') s.used = 0; });
+  c.resources.forEach(r => { if (r.recoversOn !== 'none') r.current = r.max; });
+  c.spellSlots.forEach(s => { s.used = 0; });
   c.currentHP = c.maxHP;
   c.tempHP = 0;
   c.exhaustion = Math.max(0, (c.exhaustion || 0) - 1);
+  c.deathSaves = { success: 0, failure: 0 };
   saveState(); renderSession();
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
-function showToast(msg, ms = 1200) {
+function showToast(msg, ms = 1800) {
   const t = document.getElementById('toast');
   if (!t) return;
   t.textContent = msg;
@@ -713,29 +728,26 @@ function showToast(msg, ms = 1200) {
 // ─── PWA ──────────────────────────────────────────────────────────────────────
 
 (function initPWA() {
-  let deferredPrompt;
+  let deferred;
   const installBtn = document.getElementById('pwa-install-btn');
 
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferred = e;
     installBtn.hidden = false;
     installBtn.removeAttribute('aria-hidden');
   });
 
   installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
+    if (!deferred) return;
+    deferred.prompt();
+    await deferred.userChoice;
+    deferred = null;
     installBtn.hidden = true;
     installBtn.setAttribute('aria-hidden', 'true');
   });
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('pwa/service-worker.js')
-      .then(() => console.log('SW registered'))
-      .catch(err => console.warn('SW failed', err));
+    navigator.serviceWorker.register('pwa/service-worker.js').catch(() => {});
   }
 })();
 
@@ -744,125 +756,22 @@ function showToast(msg, ms = 1200) {
 document.getElementById('export-btn').addEventListener('click', () => {
   try {
     const blob = new Blob([localStorage.getItem('dndTrackerState') || '{}'], { type: 'application/json' });
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(blob),
-      download: 'dnd-tracker-export.json'
-    });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'dnd-tracker-export.json' });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
   } catch (err) { alert('Export failed: ' + err.message); }
 });
 
-document.getElementById('import-btn').addEventListener('click', () => {
-  document.getElementById('import-file').click();
-});
+document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
 
-document.getElementById('import-file').addEventListener('change', async (ev) => {
+document.getElementById('import-file').addEventListener('change', async ev => {
   const file = ev.target.files[0];
   if (!file) return;
   try {
     const parsed = JSON.parse(await file.text());
-    if (!parsed || !Array.isArray(parsed.characters)) throw new Error('Invalid file format');
+    if (!Array.isArray(parsed.characters)) throw new Error('Invalid format');
     localStorage.setItem('dndTrackerState', JSON.stringify(parsed));
     location.reload();
   } catch (err) { alert('Import failed: ' + err.message); }
-});
-
-// ─── Character Modal ──────────────────────────────────────────────────────────
-
-(function initCharacterModal() {
-  const modal = document.getElementById('character-modal');
-  const form = document.getElementById('character-form');
-  const addBtn = document.getElementById('add-character-btn');
-  const cancelBtn = document.getElementById('character-cancel');
-  const nameInput = document.getElementById('character-form-name');
-  const maxInput = document.getElementById('character-form-maxhp');
-  const saveBtn = document.getElementById('character-save');
-  const errorEl = document.getElementById('character-form-error');
-
-  const open = () => { modal.hidden = false; nameInput.focus(); };
-  const close = () => { modal.hidden = true; addBtn.focus(); };
-
-  addBtn.addEventListener('click', open);
-  cancelBtn.addEventListener('click', close);
-  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-
-  function getFields() {
-    return {
-      name: nameInput.value.trim(),
-      max: parseInt(maxInput.value, 10),
-      full: parseInt(document.getElementById('character-form-fullcaster').value, 10),
-      half: parseInt(document.getElementById('character-form-halfcaster').value, 10),
-      pact: parseInt(document.getElementById('character-form-pactlevel').value, 10)
-    };
-  }
-
-  function validate() {
-    errorEl.hidden = true;
-    const { name, max, full, half, pact } = getFields();
-    const fail = (msg) => { errorEl.textContent = msg; errorEl.hidden = false; saveBtn.disabled = true; return false; };
-    if (!name) return fail('Please enter a character name.');
-    if (!Number.isInteger(max) || max < 1) return fail('Max HP must be a positive number.');
-    if (!Number.isInteger(full) || full < 0 || full > 20) return fail('Full caster level must be 0–20.');
-    if (!Number.isInteger(half) || half < 0 || half > 20) return fail('Half caster level must be 0–20.');
-    if (!Number.isInteger(pact) || pact < 0 || pact > 20) return fail('Pact magic level must be 0–20.');
-    if (full + half + pact > 20) return fail('Total character level cannot exceed 20.');
-    saveBtn.disabled = false;
-    return true;
-  }
-
-  ['character-form-name','character-form-maxhp','character-form-fullcaster',
-   'character-form-halfcaster','character-form-pactlevel'].forEach(id => {
-    document.getElementById(id).addEventListener('input', validate);
-  });
-  validate();
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-    const { name, max, full, half, pact } = getFields();
-
-    const newCharacter = {
-      id: crypto.randomUUID(),
-      name,
-      maxHP: max,
-      currentHP: max,
-      tempHP: 0,
-      deathSaves: { success: 0, failure: 0 },
-      spellSlots: buildSpellSlotsFromCasterInfo(full, half, pact),
-      resources: [],
-      statuses: []
-    };
-
-    state.characters.push(newCharacter);
-    saveState();
-    renderCharacterList();
-    close();
-    form.reset();
-    saveBtn.disabled = true;
-
-    setTimeout(() => {
-      const li = document.querySelector(`[data-id="${newCharacter.id}"]`);
-      if (li) { li.scrollIntoView({ behavior: 'smooth', block: 'center' }); li.click(); }
-    }, 50);
-
-    const slotSummary = newCharacter.spellSlots.length
-      ? newCharacter.spellSlots.map(s => `${s.level}L:${s.max}${s.pact ? '(pact)' : ''}`).join(', ')
-      : 'No spell slots';
-    showToast(`Added '${name}' — ${slotSummary}`);
-  });
-})();
-
-// ─── Back Button ─────────────────────────────────────────────────────────────
-
-document.getElementById("back-btn").addEventListener("click", () => {
-  editMode = false;
-  state.selectedCharacterId = null;
-  saveState();
-  showCharacterList();
-  renderCharacterList();
 });
 
 // ─── Edit Mode ───────────────────────────────────────────────────────────────
@@ -870,127 +779,220 @@ document.getElementById("back-btn").addEventListener("click", () => {
 document.getElementById('edit-btn').addEventListener('click', () => {
   editMode = !editMode;
   document.getElementById('edit-btn').textContent = editMode ? '✓' : '✎';
-  renderSession();
+  document.getElementById('add-spellslot-btn').hidden = !editMode;
+  document.getElementById('add-resource-btn').hidden = !editMode;
+  document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
+
+  if (!editMode) {
+    document.querySelectorAll('.swipe-item.swiped').forEach(el => {
+      el.classList.remove('swiped');
+      const content = el.querySelector('.swipe-content');
+      if (content) { content.style.transition = 'transform 0.2s ease'; content.style.transform = ''; }
+    });
+  }
 });
 
-// ─── HP Controls ─────────────────────────────────────────────────────────────
+// ─── Back button ─────────────────────────────────────────────────────────────
 
-(function initHPControls() {
+document.getElementById('back-btn').addEventListener('click', () => {
+  editMode = false;
+  document.getElementById('edit-btn').textContent = '✎';
+  document.getElementById('session-screen').classList.remove('edit-mode');
+  document.querySelectorAll('.swipe-item.swiped').forEach(el => {
+    el.classList.remove('swiped');
+    const content = el.querySelector('.swipe-content');
+    if (content) { content.style.transition = 'transform 0.2s ease'; content.style.transform = ''; }
+  });
+  state.selectedCharacterId = null;
+  saveState();
+  showCharacterList();
+  renderCharacterList();
+});
+
+// ─── HP controls ─────────────────────────────────────────────────────────────
+
+(function initHP() {
   const amountInput = document.getElementById('hp-update-amount');
 
   document.getElementById('hp-add').addEventListener('click', () => {
     const v = Math.max(0, parseInt(amountInput.value, 10) || 0);
     if (!v) return;
-    heal(v);
-    amountInput.value = '';
+    heal(v); amountInput.value = '';
   });
 
   document.getElementById('hp-subtract').addEventListener('click', () => {
     const v = Math.max(0, parseInt(amountInput.value, 10) || 0);
     if (!v) return;
-    applyDamage(v);
-    amountInput.value = '';
+    applyDamage(v); amountInput.value = '';
   });
 
-  const tempInline = document.getElementById('hp-temp-inline');
-  tempInline.addEventListener('change', () => {
-    const c = getSelectedCharacter();
-    if (!c) return;
-    c.tempHP = Math.max(0, parseInt(tempInline.value, 10) || 0);
+  const temp = document.getElementById('hp-temp-inline');
+  temp.addEventListener('change', () => {
+    const c = getSelectedCharacter(); if (!c) return;
+    c.tempHP = Math.max(0, parseInt(temp.value, 10) || 0);
     saveState(); renderSession();
   });
-  tempInline.addEventListener('keydown', e => { if (e.key === 'Enter') tempInline.blur(); });
+  temp.addEventListener('keydown', e => { if (e.key === 'Enter') temp.blur(); });
 })();
 
-// ─── Rest Buttons ────────────────────────────────────────────────────────────
-
-document.getElementById('short-rest').addEventListener('click', () => {
-  if (!confirm('Take a short rest? This will restore short-rest resources and slots.')) return;
-  shortRest();
-  showToast('Short rest: short-rest resources restored');
-  flashBar();
-});
-
-document.getElementById('long-rest').addEventListener('click', () => {
-  if (!confirm('Take a long rest? This will restore HP and all resources.')) return;
-  longRest();
-  showToast('Long rest: HP and all resources restored');
-  flashBar();
-});
+// ─── Rest buttons ─────────────────────────────────────────────────────────────
 
 function flashBar() {
-  const fill = document.getElementById('hp-bar-fill');
-  if (!fill) return;
+  const fill = document.getElementById('hp-bar-fill'); if (!fill) return;
   fill.classList.add('hp-bar-flash');
   setTimeout(() => fill.classList.remove('hp-bar-flash'), 900);
 }
 
-// ─── Resource Modal ───────────────────────────────────────────────────────────
+document.getElementById('short-rest').addEventListener('click', () => {
+  if (!confirm('Take a short rest?')) return;
+  shortRest(); showToast('Short rest taken'); flashBar();
+});
+
+document.getElementById('long-rest').addEventListener('click', () => {
+  if (!confirm('Take a long rest? This will restore HP and all resources.')) return;
+  longRest(); showToast('Long rest taken — HP and resources restored'); flashBar();
+});
+
+// ─── Character modal ──────────────────────────────────────────────────────────
+
+(function initCharacterModal() {
+  const modal   = document.getElementById('character-modal');
+  const form    = document.getElementById('character-form');
+  const addBtn  = document.getElementById('add-character-btn');
+  const cancel  = document.getElementById('character-cancel');
+  const nameIn  = document.getElementById('character-form-name');
+  const maxIn   = document.getElementById('character-form-maxhp');
+  const saveBtn = document.getElementById('character-save');
+  const errEl   = document.getElementById('character-form-error');
+
+  const open  = () => { form.reset(); validate(); modal.hidden = false; nameIn.focus(); };
+  const close = () => { modal.hidden = true; addBtn.focus(); };
+
+  addBtn.addEventListener('click', open);
+  cancel.addEventListener('click', close);
+  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  function fields() {
+    return {
+      name: nameIn.value.trim(),
+      max:  parseInt(maxIn.value, 10),
+      full: parseInt(document.getElementById('character-form-fullcaster').value, 10),
+      half: parseInt(document.getElementById('character-form-halfcaster').value, 10),
+      pact: parseInt(document.getElementById('character-form-pactlevel').value, 10),
+    };
+  }
+
+  function validate() {
+    errEl.hidden = true;
+    const { name, max, full, half, pact } = fields();
+    const fail = msg => { errEl.textContent = msg; errEl.hidden = false; saveBtn.disabled = true; return false; };
+    if (!name)                                   return fail('Please enter a name.');
+    if (!Number.isInteger(max) || max < 1)       return fail('Max HP must be a positive number.');
+    if (!Number.isInteger(full)||full<0||full>20) return fail('Full caster level must be 0–20.');
+    if (!Number.isInteger(half)||half<0||half>20) return fail('Half caster level must be 0–20.');
+    if (!Number.isInteger(pact)||pact<0||pact>20) return fail('Pact magic level must be 0–20.');
+    if (full + half + pact > 20)                 return fail('Total level cannot exceed 20.');
+    saveBtn.disabled = false;
+    return true;
+  }
+
+  ['character-form-name','character-form-maxhp','character-form-fullcaster',
+   'character-form-halfcaster','character-form-pactlevel'].forEach(id =>
+    document.getElementById(id).addEventListener('input', validate));
+
+  validate();
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    if (!validate()) return;
+    const { name, max, full, half, pact } = fields();
+
+    const ch = {
+      id: crypto.randomUUID(), name,
+      maxHP: max, currentHP: max, tempHP: 0,
+      deathSaves: { success: 0, failure: 0 },
+      spellSlots: buildSpellSlotsFromCasterInfo(full, half, pact),
+      resources: [], statuses: [], exhaustion: 0,
+    };
+
+    state.characters.push(ch);
+    saveState();
+    renderCharacterList();
+    close();
+
+    setTimeout(() => {
+      const li = document.querySelector(`[data-id="${ch.id}"]`);
+      if (li) { li.scrollIntoView({ behavior: 'smooth', block: 'center' }); li.click(); }
+    }, 50);
+
+    showToast(`Added ${name}`);
+  });
+})();
+
+// ─── Resource modal ───────────────────────────────────────────────────────────
 
 (function initResourceModal() {
-  const modal = document.getElementById('resource-modal');
-  const form = document.getElementById('resource-form');
+  const modal   = document.getElementById('resource-modal');
+  const form    = document.getElementById('resource-form');
   const openBtn = document.getElementById('add-resource-btn');
-  const cancelBtn = document.getElementById('resource-cancel');
-  const nameInput = document.getElementById('resource-form-name');
-  const maxInput = document.getElementById('resource-form-max');
-  const recoversInput = document.getElementById('resource-form-recoversOn');
-  const errorEl = document.getElementById('resource-form-error');
+  const cancel  = document.getElementById('resource-cancel');
+  const nameIn  = document.getElementById('resource-form-name');
+  const maxIn   = document.getElementById('resource-form-max');
+  const recIn   = document.getElementById('resource-form-recoversOn');
+  const errEl   = document.getElementById('resource-form-error');
 
-  const open = () => { modal.hidden = false; nameInput.focus(); };
+  const open  = () => { modal.hidden = false; nameIn.focus(); };
   const close = () => { modal.hidden = true; openBtn.focus(); };
 
   openBtn.addEventListener('click', open);
-  cancelBtn.addEventListener('click', close);
+  cancel.addEventListener('click', close);
   modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', e => {
     e.preventDefault();
-    errorEl.hidden = true;
-    const name = nameInput.value.trim();
-    const max = parseInt(maxInput.value, 10) || 1;
-    const recoversOn = recoversInput.value || 'none';
-    if (!name) { errorEl.textContent = 'Please enter a name.'; errorEl.hidden = false; return; }
-    if (!Number.isInteger(max) || max < 1) { errorEl.textContent = 'Max must be 1 or more.'; errorEl.hidden = false; return; }
+    errEl.hidden = true;
+    const name = nameIn.value.trim();
+    const max  = parseInt(maxIn.value, 10) || 1;
+    const rec  = recIn.value || 'none';
+    if (!name) { errEl.textContent = 'Please enter a name.'; errEl.hidden = false; return; }
     const c = getSelectedCharacter();
-    if (!c) { errorEl.textContent = 'No character selected.'; errorEl.hidden = false; return; }
-    c.resources.push({ id: crypto.randomUUID(), name, current: max, max, recoversOn });
+    if (!c)    { errEl.textContent = 'No character selected.'; errEl.hidden = false; return; }
+    c.resources.push({ id: crypto.randomUUID(), name, current: max, max, recoversOn: rec });
     saveState(); renderSession();
     close(); form.reset();
     showToast(`Added resource '${name}'`);
   });
 })();
 
-// ─── Spell Slot Modal ─────────────────────────────────────────────────────────
+// ─── Spell slot modal ─────────────────────────────────────────────────────────
 
 (function initSpellSlotModal() {
-  const modal = document.getElementById('spellslot-modal');
-  const form = document.getElementById('spellslot-form');
+  const modal   = document.getElementById('spellslot-modal');
+  const form    = document.getElementById('spellslot-form');
   const openBtn = document.getElementById('add-spellslot-btn');
-  const cancelBtn = document.getElementById('spellslot-cancel');
-  const levelInput = document.getElementById('spellslot-form-level');
-  const maxInput = document.getElementById('spellslot-form-max');
-  const recoversInput = document.getElementById('spellslot-form-recoversOn');
-  const errorEl = document.getElementById('spellslot-form-error');
+  const cancel  = document.getElementById('spellslot-cancel');
+  const lvlIn   = document.getElementById('spellslot-form-level');
+  const maxIn   = document.getElementById('spellslot-form-max');
+  const recIn   = document.getElementById('spellslot-form-recoversOn');
+  const errEl   = document.getElementById('spellslot-form-error');
 
-  const open = () => { modal.hidden = false; levelInput.focus(); };
+  const open  = () => { modal.hidden = false; lvlIn.focus(); };
   const close = () => { modal.hidden = true; openBtn.focus(); };
 
   openBtn.addEventListener('click', open);
-  cancelBtn.addEventListener('click', close);
+  cancel.addEventListener('click', close);
   modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', e => {
     e.preventDefault();
-    errorEl.hidden = true;
-    const level = parseInt(levelInput.value, 10) || 1;
-    const max = parseInt(maxInput.value, 10) || 0;
-    const recoversOn = recoversInput.value || 'long';
-    if (level < 1 || level > 9) { errorEl.textContent = 'Level must be 1–9.'; errorEl.hidden = false; return; }
-    if (max < 0) { errorEl.textContent = 'Max must be 0 or more.'; errorEl.hidden = false; return; }
+    errEl.hidden = true;
+    const level = parseInt(lvlIn.value, 10) || 1;
+    const max   = parseInt(maxIn.value, 10) || 0;
+    const rec   = recIn.value || 'long';
+    if (level < 1 || level > 9) { errEl.textContent = 'Level must be 1–9.'; errEl.hidden = false; return; }
     const c = getSelectedCharacter();
-    if (!c) { errorEl.textContent = 'No character selected.'; errorEl.hidden = false; return; }
-    c.spellSlots.push({ id: crypto.randomUUID(), level, max, used: 0, recoversOn, pact: recoversOn === 'short' });
+    if (!c) { errEl.textContent = 'No character selected.'; errEl.hidden = false; return; }
+    c.spellSlots.push({ id: crypto.randomUUID(), level, max, used: 0, recoversOn: rec, pact: rec === 'short' });
     saveState(); renderSession();
     close(); form.reset();
     showToast(`Added level ${level} spell slots`);
@@ -1001,12 +1003,8 @@ function flashBar() {
 
 try {
   renderCharacterList();
-  if (state.selectedCharacterId) {
-    renderSession();
-    showSession();
-  } else {
-    showCharacterList();
-  }
+  if (state.selectedCharacterId) { renderSession(); showSession(); }
+  else showCharacterList();
 } catch (err) {
-  console.error('Error rendering initial UI:', err);
+  console.error('Init error:', err);
 }
