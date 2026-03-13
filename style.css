@@ -183,7 +183,7 @@ button:disabled { opacity: 0.5; }
 }
 
 .card.small { padding: 0.6rem; border-radius: 10px; }
-.card h3    { text-align: center; margin-bottom: 0.6rem; }
+.card h3    { text-align: center; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
 
 /* ─── CHARACTER LIST ─────────────────────────────────────────────────────────── */
 
@@ -371,6 +371,18 @@ button:disabled { opacity: 0.5; }
   align-items: stretch;
 }
 
+/* Red edge hint in edit mode */
+.edit-mode .swipe-item::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--red);
+  border-radius: 0 10px 10px 0;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .swipe-delete-bg {
   position: absolute;
   right: 0; top: 0; bottom: 0;
@@ -404,26 +416,25 @@ button:disabled { opacity: 0.5; }
   will-change: transform;
 }
 
-/* Inner slot/resource row */
+/* Inner slot/resource row — label beside checkboxes */
 .spellslot-item {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 0.5rem 0.6rem;
-  min-height: 56px;
+  padding: 0.6rem 0.6rem;
 }
 
 .slot-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
   width: 100%;
 }
 
 .slot-left {
-  width: 100px;
-  flex: 0 0 100px;
-  padding-right: 0.4rem;
+  width: 90px;
+  flex: 0 0 90px;
+  padding-right: 0;
 }
 
 .slot-center {
@@ -432,22 +443,22 @@ button:disabled { opacity: 0.5; }
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
-  overflow: hidden;
+  gap: 0.4rem;
 }
 
-.spellslot-label  { font-weight: 800; font-size: 0.95rem; }
+.spellslot-label  { font-weight: 800; font-size: 0.95rem; display: flex; flex-direction: column; gap: 0.1rem; }
 .resource-label   { font-weight: 800; font-size: 0.95rem; }
-.pact-badge       { margin-left: 0.4rem; color: #c7b3ff; font-weight: 700; font-size: 0.8rem; }
+.pact-badge { margin-left: 0; color: #c7b3ff; font-weight: 700; font-size: 0.78rem; display: block; }
 
 /* Slot toggles (checkboxes) */
-.spellslot-controls { display: flex; gap: 0.25rem; align-items: center; }
+.spellslot-controls { display: flex; gap: 0.4rem; align-items: center; }
 
 .slot-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 3px;
-  border-radius: 6px;
+  padding: 2px;
+  border-radius: 8px;
   background: transparent;
   cursor: pointer;
   touch-action: manipulation;
@@ -456,15 +467,15 @@ button:disabled { opacity: 0.5; }
 }
 
 .slot-checkbox {
-  width: 0; height: 20px; margin: 0;
-  opacity: 0; position: relative; z-index: 1;
+  width: 0; height: 0; margin: 0;
+  opacity: 0; position: absolute;
   cursor: pointer;
 }
 
 .slot-box {
   display: inline-block;
-  width: 40px; height: 40px;
-  border-radius: 8px;
+  width: 50px; height: 50px;
+  border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.08);
   background: transparent;
   transition: all .12s ease;
@@ -564,6 +575,8 @@ button:disabled { opacity: 0.5; }
   width: 100%;
 }
 
+.exhaustion-boxes .slot-box { width: 45px; height: 45px; border-radius: 9px; }
+
 /* ─── REST ───────────────────────────────────────────────────────────────────── */
 
 #rest-section { display: flex; gap: 0.5rem; }
@@ -628,6 +641,5 @@ button:disabled { opacity: 0.5; }
   .card { padding: 0.65rem; border-radius: 10px; }
   .card.small { padding: 0.5rem; }
   .character-title { font-size: 1.3rem; }
-  .slot-left { width: 80px; flex: 0 0 80px; }
   .modal-content { width: 100%; max-width: 100%; border-radius: 0; padding: 1rem; }
 }
