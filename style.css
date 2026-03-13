@@ -165,9 +165,14 @@ button:disabled { opacity: 0.5; }
 .link-btn    { background: transparent; border: none; color: var(--muted); padding: 0.4rem 0.6rem; }
 
 .screen-footer {
-  flex-shrink: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   padding: 0.75rem 1rem calc(var(--safe-bottom) + 0.75rem);
-  background: linear-gradient(transparent, var(--bg) 35%);
+  background: linear-gradient(transparent, var(--bg) 30%);
+  z-index: 50;
+  pointer-events: none;
 }
 
 #add-character-btn {
@@ -175,6 +180,7 @@ button:disabled { opacity: 0.5; }
   max-width: 460px;
   display: block;
   margin: 0 auto;
+  pointer-events: auto;
 }
 
 .edit-character-btn {
@@ -207,6 +213,7 @@ button:disabled { opacity: 0.5; }
 #character-list {
   list-style: none;
   margin-bottom: 0;
+  padding-bottom: 5rem;
 }
 
 #character-list li {
@@ -507,6 +514,28 @@ button:disabled { opacity: 0.5; }
 
 .slot-toggle:active { transform: scale(0.96); }
 .slot-toggle:focus-within .slot-box { outline: 3px solid rgba(124,58,237,0.15); }
+
+/* Add-one box — hidden by default, shown in edit mode */
+.slot-add-box {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--muted);
+  font-size: 1.4rem;
+  font-weight: 400;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.edit-mode .slot-add-box {
+  display: inline-flex;
+}
+
+.slot-toggle:active .slot-add-box {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--text);
+}
 
 /* Resource counter mode (max > 4) */
 .resource-counter-controls {

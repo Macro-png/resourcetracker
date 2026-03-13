@@ -388,13 +388,21 @@ function renderResources(c) {
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.className = 'slot-checkbox';
-        cb.checked = (r.current || 0) > i; // checked = available (remaining)
+        // purple = used/spent, fills from the left
+        cb.checked = i < (r.max - (r.current || 0));
         cb.setAttribute('aria-label', `${r.name} ${i + 1}`);
         cb.addEventListener('change', () => {
-          if (cb.checked) {
-            r.current = Math.min(r.max, (r.current || 0) + 1);
+          if (editMode) {
+            r.max--;
+            r.current = Math.min(r.current || 0, r.max);
+            if (r.max === 0) c.resources = c.resources.filter(x => x.id !== r.id);
           } else {
-            r.current = Math.max(0, (r.current || 0) - 1);
+            // checked = used (purple) → decrement current
+            if (cb.checked) {
+              r.current = Math.max(0, (r.current || 0) - 1);
+            } else {
+              r.current = Math.min(r.max, (r.current || 0) + 1);
+            }
           }
           saveState();
           renderSession();
@@ -406,6 +414,23 @@ function renderResources(c) {
         label.appendChild(box);
         controls.appendChild(label);
       }
+
+      // + add box — at max 3 clicking it pushes to 4 which switches to counter mode
+      const addLabel = document.createElement('label');
+      addLabel.className = 'slot-toggle';
+      addLabel.title = 'Add one more';
+      const addBox = document.createElement('span');
+      addBox.className = 'slot-box slot-add-box';
+      addBox.textContent = '+';
+      addLabel.appendChild(addBox);
+      addLabel.addEventListener('click', () => {
+        if (!editMode) return;
+        r.max++;
+        r.current = Math.min(r.current || 0, r.max);
+        saveState();
+        renderSession();
+      });
+      controls.appendChild(addLabel);
     } else {
       // ── Counter mode (styled large) ──
       controls.className = 'resource-counter-controls';
@@ -419,8 +444,14 @@ function renderResources(c) {
       dec.className = 'resource-counter-btn';
       dec.textContent = '−';
       dec.addEventListener('click', () => {
-        if (r.current <= 0) return;
-        r.current = Math.max(0, r.current - 1);
+        if (editMode) {
+          if (r.max <= 1) return;
+          r.max--;
+          r.current = Math.min(r.current, r.max);
+        } else {
+          if (r.current <= 0) return;
+          r.current = Math.max(0, r.current - 1);
+        }
         saveState();
         flash(dec);
         val.textContent = `${r.current} / ${r.max}`;
@@ -435,8 +466,13 @@ function renderResources(c) {
       inc.className = 'resource-counter-btn';
       inc.textContent = '+';
       inc.addEventListener('click', () => {
-        if (r.current >= r.max) return;
-        r.current = Math.min(r.max, r.current + 1);
+        if (editMode) {
+          r.max++;
+          r.current = Math.min(r.current, r.max);
+        } else {
+          if (r.current >= r.max) return;
+          r.current = Math.min(r.max, r.current + 1);
+        }
         saveState();
         flash(inc);
         val.textContent = `${r.current} / ${r.max}`;
@@ -508,10 +544,18 @@ function renderSpellSlots(c) {
       cb.checked = (s.used || 0) > i;
       cb.setAttribute('aria-label', title);
       cb.addEventListener('change', () => {
-        if (cb.checked) {
-          s.used = Math.min(s.max, (s.used || 0) + 1);
+        if (editMode) {
+          if (s.max > 0) {
+            s.max--;
+            s.used = Math.min(s.used || 0, s.max);
+            if (s.max === 0) c.spellSlots = c.spellSlots.filter(x => x.id !== s.id);
+          }
         } else {
-          s.used = Math.max(0, (s.used || 0) - 1);
+          if (cb.checked) {
+            s.used = Math.min(s.max, (s.used || 0) + 1);
+          } else {
+            s.used = Math.max(0, (s.used || 0) - 1);
+          }
         }
         saveState();
         renderSession();
@@ -522,6 +566,25 @@ function renderSpellSlots(c) {
       label.appendChild(cb);
       label.appendChild(box);
       controls.appendChild(label);
+    }
+
+    // + add box when below the allowed max
+    const maxAllowed = s.pact ? 2 : 4;
+    if (s.max < maxAllowed) {
+      const addLabel = document.createElement('label');
+      addLabel.className = 'slot-toggle';
+      addLabel.title = `Add a ${s.pact ? 'pact ' : ''}slot`;
+      const addBox = document.createElement('span');
+      addBox.className = 'slot-box slot-add-box';
+      addBox.textContent = '+';
+      addLabel.appendChild(addBox);
+      addLabel.addEventListener('click', () => {
+        if (!editMode) return;
+        s.max++;
+        saveState();
+        renderSession();
+      });
+      controls.appendChild(addLabel);
     }
 
     makeSwipeable(el, () => {
