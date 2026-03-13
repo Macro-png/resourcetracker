@@ -77,6 +77,18 @@ html, body {
   height: 0;
   width: 100%;
   scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+}
+
+#session-screen::-webkit-scrollbar { display: none; }
+
+.session-content {
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 0.75rem;
+  box-sizing: border-box;
 }
 
 /* -----------------------------
@@ -425,7 +437,20 @@ button:disabled { opacity: 0.5; }
    SESSION / CONCENTRATION
 ------------------------------ */
 
-.session-toprow { position: relative; padding-top: 0.6rem; margin-bottom: 0.25rem; display: flex; align-items: center; justify-content: space-between; }
+.session-toprow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top) + 0.75rem) 1rem 0.75rem;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #222;
+  margin-bottom: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-sizing: border-box;
+}
 .session-title-block { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; }
 .character-title    { font-size: 1.6rem; font-weight: 900; color: #ffffff; margin-top: 0.15rem; }
 
