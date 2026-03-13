@@ -5,6 +5,8 @@ let state = {
   selectedCharacterId: null
 };
 
+let editMode = false;
+
 function getSelectedCharacter() {
   return state.characters.find(c => c.id === state.selectedCharacterId);
 }
@@ -155,6 +157,8 @@ function renderSession() {
   renderDeathSaves(c);
   renderResources(c);
   renderSpellSlots(c);
+  document.getElementById('add-resource-btn').hidden = !editMode;
+  document.getElementById('add-spellslot-btn').hidden = !editMode;
   renderStatuses(c);
 }
 
@@ -211,6 +215,22 @@ function heal(amount) {
   const c = getSelectedCharacter();
   if (!c) return;
   c.currentHP = Math.min(c.maxHP, c.currentHP + amount);
+
+  if (c.currentHP > 0 && hasCondition(c, 'Unconscious')) {
+    c.statuses = c.statuses.filter(s => s.name !== 'Unconscious');
+    const stillImplied = new Set(
+      c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || [])
+    );
+    c.statuses.forEach(s => {
+      if (s.implied && STICKY_IMPLIED.has(s.name) && !stillImplied.has(s.name)) {
+        s.implied = false;
+      }
+    });
+    c.statuses = c.statuses.filter(s =>
+      !s.implied || stillImplied.has(s.name) || STICKY_IMPLIED.has(s.name)
+    );
+  }
+
   saveState();
   renderSession();
 }
@@ -264,6 +284,18 @@ function renderDeathSaves(c) {
   });
 }
 
+document.getElementById('revive-btn').addEventListener('click', () => {
+  const c = getSelectedCharacter();
+  if (!c) return;
+  c.dead = false;
+  c.currentHP = 1;
+  c.deathSaves = { success: 0, failure: 0 };
+  c.statuses = [];
+  c.exhaustion = 0;
+  saveState(); renderSession();
+  showToast(`${c.name} has been revived!`);
+});
+
 // ─── Resources ────────────────────────────────────────────────────────────────
 
 function renderResources(c) {
@@ -304,11 +336,15 @@ function renderResources(c) {
 
     const removeBtn = el.querySelector('.slot-remove');
     if (removeBtn) {
-      removeBtn.addEventListener('click', () => {
-        if (!confirm(`Remove resource "${r.name}"?`)) return;
-        c.resources = c.resources.filter(x => x.id !== r.id);
-        saveState(); renderSession();
-      });
+      if (editMode) {
+        removeBtn.addEventListener('click', () => {
+          if (!confirm(`Remove resource "${r.name}"?`)) return;
+          c.resources = c.resources.filter(x => x.id !== r.id);
+          saveState(); renderSession();
+        });
+      } else {
+        removeBtn.hidden = true;
+      }
     }
 
     container.appendChild(el);
@@ -380,11 +416,15 @@ function renderSpellSlots(c) {
 
     const removeBtn = el.querySelector('.slot-remove');
     if (removeBtn) {
-      removeBtn.addEventListener('click', () => {
-        if (!confirm(`Remove spell slots level ${s.level}${s.pact ? ' (pact)' : ''}?`)) return;
-        c.spellSlots = c.spellSlots.filter(x => x.id !== s.id);
-        saveState(); renderSession();
-      });
+      if (editMode) {
+        removeBtn.addEventListener('click', () => {
+          if (!confirm(`Remove spell slots level ${s.level}${s.pact ? ' (pact)' : ''}?`)) return;
+          c.spellSlots = c.spellSlots.filter(x => x.id !== s.id);
+          saveState(); renderSession();
+        });
+      } else {
+        removeBtn.hidden = true;
+      }
     }
 
     container.appendChild(el);
@@ -626,6 +666,16 @@ function renderStatuses(c) {
 
 }
 
+document.getElementById('concentration-modal-fail').addEventListener('click', () => {
+  const c = getSelectedCharacter();
+  if (c) { delete c.concentration; saveState(); renderSession(); }
+  document.getElementById('concentration-modal').hidden = true;
+});
+
+document.getElementById('concentration-modal-success').addEventListener('click', () => {
+  document.getElementById('concentration-modal').hidden = true;
+});
+
 // ─── Rests ────────────────────────────────────────────────────────────────────
 
 function shortRest() {
@@ -806,10 +856,19 @@ document.getElementById('import-file').addEventListener('change', async (ev) => 
 // ─── Back Button ─────────────────────────────────────────────────────────────
 
 document.getElementById("back-btn").addEventListener("click", () => {
+  editMode = false;
   state.selectedCharacterId = null;
   saveState();
   showCharacterList();
   renderCharacterList();
+});
+
+// ─── Edit Mode ───────────────────────────────────────────────────────────────
+
+document.getElementById('edit-btn').addEventListener('click', () => {
+  editMode = !editMode;
+  document.getElementById('edit-btn').textContent = editMode ? 'Done' : 'Edit';
+  renderSession();
 });
 
 // ─── HP Controls ─────────────────────────────────────────────────────────────
@@ -949,25 +1008,3 @@ try {
 } catch (err) {
   console.error('Error rendering initial UI:', err);
 }
-
-document.getElementById('concentration-modal-fail').addEventListener('click', () => {
-  const c = getSelectedCharacter();
-  if (c) { delete c.concentration; saveState(); renderSession(); }
-  document.getElementById('concentration-modal').hidden = true;
-});
-
-document.getElementById('concentration-modal-success').addEventListener('click', () => {
-  document.getElementById('concentration-modal').hidden = true;
-});
-
-document.getElementById('revive-btn').addEventListener('click', () => {
-  const c = getSelectedCharacter();
-  if (!c) return;
-  c.dead = false;
-  c.currentHP = 1;
-  c.deathSaves = { success: 0, failure: 0 };
-  c.statuses = [];
-  c.exhaustion = 0;
-  saveState(); renderSession();
-  showToast(`${c.name} has been revived!`);
-});

@@ -390,8 +390,8 @@ button:disabled { opacity: 0.5; }
    SESSION / CONCENTRATION
 ------------------------------ */
 
-.session-toprow     { position: relative; padding-top: 0.6rem; margin-bottom: 0.25rem; }
-.session-title-block { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.session-toprow { position: relative; padding-top: 0.6rem; margin-bottom: 0.25rem; display: flex; align-items: center; justify-content: space-between; }
+.session-title-block { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; }
 .character-title    { font-size: 1.6rem; font-weight: 900; color: #ffffff; margin-top: 0.15rem; }
 
 #back-btn { position: absolute; left: 0; top: 0; margin-bottom: 0.5rem; }
