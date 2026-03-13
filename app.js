@@ -57,27 +57,35 @@ function makeSwipeable(el, onDelete) {
     tracking = false;
   }, { passive: true });
 
+  const SWIPE_WIDTH = 56;
+  const SWIPE_THRESHOLD = 20;
+
   content.addEventListener('touchmove', e => {
     if (!editMode) return;
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
     if (!tracking && Math.abs(dy) > Math.abs(dx)) return;
     tracking = true;
-    const clamped = Math.max(-80, Math.min(0, dx));
+    const clamped = Math.max(-SWIPE_WIDTH, Math.min(0, dx));
     content.style.transition = 'none';
     content.style.transform = `translateX(${clamped}px)`;
+    bg.style.transition = 'none';
+    bg.style.opacity = String(Math.min(1, Math.abs(clamped) / SWIPE_WIDTH));
   }, { passive: true });
 
   content.addEventListener('touchend', () => {
     if (!editMode) return;
     content.style.transition = 'transform 0.2s ease';
+    bg.style.transition = 'opacity 0.15s ease';
     const x = new DOMMatrix(getComputedStyle(content).transform).m41;
-    if (x < -40) {
+    if (x < -SWIPE_THRESHOLD) {
       el.classList.add('swiped');
-      content.style.transform = 'translateX(-80px)';
+      content.style.transform = `translateX(-${SWIPE_WIDTH}px)`;
+      bg.style.opacity = '1';
     } else {
       el.classList.remove('swiped');
       content.style.transform = '';
+      bg.style.opacity = '0';
     }
   });
 
