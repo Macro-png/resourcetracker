@@ -457,7 +457,18 @@ button:disabled { opacity: 0.5; }
 .concentration-under-btn { margin-top: 0.5rem; background: #b91c1c; color: white; border: none; padding: 0.55rem 0.9rem; border-radius: 10px; font-weight: 800; font-size: 0.95rem; }
 .concentration-under-btn.active { box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
 
-.concentration-banner { background: linear-gradient(90deg, #b91c1c, #f97316); color: white; padding: 0.8rem 1rem; border-radius: 12px; margin-top: 0.5rem; margin-bottom: 1rem; font-weight: 800; text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,0.45); font-size: 1.1rem; position: sticky; top: 0; z-index: 20; }
+.concentration-banner {
+  background: linear-gradient(90deg, #b91c1c, #f97316);
+  color: white;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+  font-size: 1.1rem;
+}
 
 /* -----------------------------
    APP HEADER
@@ -591,8 +602,20 @@ button:disabled { opacity: 0.5; }
 
   .slot-toggle { padding: 8px; }
   .slot-toggle .slot-box { width: 40px; height: 40px; border-radius: 8px; }
-  .spellslot-controls { gap: 0.35rem; justify-content: flex-start; }
-  .slot-center { justify-content: flex-start; padding-left: 8px; }
+  .spellslot-controls {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .slot-center {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
   .slot-decr, .slot-incr { min-width: 44px; min-height: 44px; font-size: 1.05rem; padding: 0.4rem; border-radius: 8px; }
   .resource-value { padding: 0 0.6rem; min-width: 48px; text-align: center; }
   .spellslot-item { min-height: 64px; }
