@@ -36,6 +36,8 @@ p  { font-size: 1.1rem; }
 main {
   max-width: 480px;
   margin: 0 auto;
+  width: 100%;
+  padding: 0 0.75rem;
 }
 
 .row {
@@ -70,7 +72,8 @@ html, body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  height: 0; /* force flex child to respect flex:1 correctly */
+  height: 0;
+  width: 100%;
 }
 
 /* -----------------------------
