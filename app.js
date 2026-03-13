@@ -229,9 +229,11 @@ function renderSession() {
   renderResources(c);
   renderStatuses(c);
 
-  // Add buttons controlled by editMode
+  // Sync edit mode state
+  document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
   document.getElementById('add-spellslot-btn').hidden = !editMode;
   document.getElementById('add-resource-btn').hidden = !editMode;
+  document.getElementById('edit-character-btn').hidden = !editMode;
 }
 
 // ─── HP ───────────────────────────────────────────────────────────────────────
@@ -375,26 +377,76 @@ function renderResources(c) {
     const controls = el.querySelector('[data-key="controls"]');
     controls.innerHTML = '';
 
-    const dec = document.createElement('button');
-    dec.className = 'slot-decr';
-    dec.textContent = '−';
-    dec.addEventListener('click', () => { r.current = Math.max(0, r.current - 1); saveState(); renderSession(); });
+    if (r.max <= 4) {
+      // ── Checkbox mode (like spell slots) ──
+      controls.className = 'spellslot-controls resource-controls';
+      for (let i = 0; i < r.max; i++) {
+        const label = document.createElement('label');
+        label.className = 'slot-toggle';
+        label.title = `${r.name} use ${i + 1}`;
 
-    const val = document.createElement('div');
-    val.className = 'resource-value';
-    val.textContent = `${r.current} / ${r.max}`;
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'slot-checkbox';
+        cb.checked = (r.current || 0) > i; // checked = available (remaining)
+        cb.setAttribute('aria-label', `${r.name} ${i + 1}`);
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            r.current = Math.min(r.max, (r.current || 0) + 1);
+          } else {
+            r.current = Math.max(0, (r.current || 0) - 1);
+          }
+          saveState();
+          renderSession();
+        });
 
-    const inc = document.createElement('button');
-    inc.className = 'slot-incr';
-    inc.textContent = '+';
-    inc.addEventListener('click', () => { r.current = Math.min(r.max, r.current + 1); saveState(); renderSession(); });
+        const box = document.createElement('span');
+        box.className = 'slot-box resource-slot-box';
+        label.appendChild(cb);
+        label.appendChild(box);
+        controls.appendChild(label);
+      }
+    } else {
+      // ── Counter mode (styled large) ──
+      controls.className = 'resource-counter-controls';
 
-    controls.appendChild(dec);
-    controls.appendChild(val);
-    controls.appendChild(inc);
+      const flash = btn => {
+        btn.classList.add('flash');
+        setTimeout(() => btn.classList.remove('flash'), 200);
+      };
 
-    // Remove the old slot-remove button since we use swipe now
-    el.querySelector('.slot-remove')?.remove();
+      const dec = document.createElement('button');
+      dec.className = 'resource-counter-btn';
+      dec.textContent = '−';
+      dec.addEventListener('click', () => {
+        if (r.current <= 0) return;
+        r.current = Math.max(0, r.current - 1);
+        saveState();
+        flash(dec);
+        val.textContent = `${r.current} / ${r.max}`;
+        setTimeout(() => renderSession(), 210);
+      });
+
+      const val = document.createElement('div');
+      val.className = 'resource-counter-value';
+      val.textContent = `${r.current} / ${r.max}`;
+
+      const inc = document.createElement('button');
+      inc.className = 'resource-counter-btn';
+      inc.textContent = '+';
+      inc.addEventListener('click', () => {
+        if (r.current >= r.max) return;
+        r.current = Math.min(r.max, r.current + 1);
+        saveState();
+        flash(inc);
+        val.textContent = `${r.current} / ${r.max}`;
+        setTimeout(() => renderSession(), 210);
+      });
+
+      controls.appendChild(dec);
+      controls.appendChild(val);
+      controls.appendChild(inc);
+    }
 
     makeSwipeable(el, () => {
       c.resources = c.resources.filter(x => x.id !== r.id);
@@ -456,8 +508,13 @@ function renderSpellSlots(c) {
       cb.checked = (s.used || 0) > i;
       cb.setAttribute('aria-label', title);
       cb.addEventListener('change', () => {
-        s.used = Array.from(controls.querySelectorAll('input[type="checkbox"]')).filter(x => x.checked).length;
+        if (cb.checked) {
+          s.used = Math.min(s.max, (s.used || 0) + 1);
+        } else {
+          s.used = Math.max(0, (s.used || 0) - 1);
+        }
         saveState();
+        renderSession();
       });
 
       const box = document.createElement('span');
@@ -466,9 +523,6 @@ function renderSpellSlots(c) {
       label.appendChild(box);
       controls.appendChild(label);
     }
-
-    // Remove old remove button, use swipe instead
-    el.querySelector('.slot-remove')?.remove();
 
     makeSwipeable(el, () => {
       c.spellSlots = c.spellSlots.filter(x => x.id !== s.id);
@@ -789,6 +843,7 @@ document.getElementById('edit-btn').addEventListener('click', () => {
   document.getElementById('edit-btn').textContent = editMode ? '✓' : '✎';
   document.getElementById('add-spellslot-btn').hidden = !editMode;
   document.getElementById('add-resource-btn').hidden = !editMode;
+  document.getElementById('edit-character-btn').hidden = !editMode;
   document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
 
   if (!editMode) {
@@ -934,6 +989,60 @@ document.getElementById('long-rest').addEventListener('click', () => {
     }, 50);
 
     showToast(`Added ${name}`);
+  });
+})();
+
+// ─── Edit character modal ─────────────────────────────────────────────────────
+
+(function initEditCharacterModal() {
+  const modal   = document.getElementById('edit-character-modal');
+  const form    = document.getElementById('edit-character-form');
+  const openBtn = document.getElementById('edit-character-btn');
+  const cancel  = document.getElementById('edit-character-cancel');
+  const nameIn  = document.getElementById('edit-character-form-name');
+  const maxIn   = document.getElementById('edit-character-form-maxhp');
+  const saveBtn = document.getElementById('edit-character-save');
+  const errEl   = document.getElementById('edit-character-form-error');
+
+  const open = () => {
+    const c = getSelectedCharacter();
+    if (!c) return;
+    nameIn.value = c.name;
+    maxIn.value  = c.maxHP;
+    errEl.hidden = true;
+    saveBtn.disabled = false;
+    modal.hidden = false;
+    nameIn.focus();
+  };
+
+  const close = () => { modal.hidden = true; };
+
+  openBtn.addEventListener('click', open);
+  cancel.addEventListener('click', close);
+  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = nameIn.value.trim();
+    const max  = parseInt(maxIn.value, 10);
+    if (!name) { errEl.textContent = 'Please enter a name.'; errEl.hidden = false; return; }
+    if (!Number.isInteger(max) || max < 1) { errEl.textContent = 'Max HP must be a positive number.'; errEl.hidden = false; return; }
+
+    const c = getSelectedCharacter();
+    if (!c) return;
+
+    const hpDiff = max - c.maxHP;
+    c.name  = name;
+    c.maxHP = max;
+    // If max HP increased, also increase current HP by the same amount
+    if (hpDiff > 0) c.currentHP = Math.min(max, c.currentHP + hpDiff);
+    // If max HP decreased, clamp current HP
+    c.currentHP = Math.min(c.currentHP, c.maxHP);
+
+    saveState();
+    renderSession();
+    close();
+    showToast(`Updated ${name}`);
   });
 })();
 

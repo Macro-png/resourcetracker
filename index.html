@@ -22,8 +22,10 @@
   <div id="character-list-screen" class="screen">
     <main class="session-content">
       <ul id="character-list" class="list"></ul>
-      <button id="add-character-btn" class="primary-btn" aria-haspopup="dialog">+ Add Character</button>
     </main>
+    <footer class="screen-footer">
+      <button id="add-character-btn" class="primary-btn" aria-haspopup="dialog">+ Add Character</button>
+    </footer>
   </div>
 
   <!-- SESSION SCREEN -->
@@ -43,6 +45,7 @@
 
       <!-- HP -->
       <section id="hp-card" class="card hp-card">
+        <button id="edit-character-btn" class="edit-character-btn" hidden>✎ Edit Character</button>
         <div class="hp-pill">
           <div class="hp-pill-label">HIT POINTS</div>
           <div class="hp-pill-numbers" role="status" aria-live="polite">
@@ -118,6 +121,21 @@
   </div>
 
   <!-- MODALS -->
+  <div id="edit-character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="edit-character-modal-title">
+    <div class="modal-content">
+      <h3 id="edit-character-modal-title">Edit Character</h3>
+      <form id="edit-character-form">
+        <label>Name <input id="edit-character-form-name" name="name" required /></label>
+        <label>Max HP <input id="edit-character-form-maxhp" name="maxhp" type="number" min="1" required /></label>
+        <div id="edit-character-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="edit-character-save">Save</button>
+          <button type="button" id="edit-character-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
     <div class="modal-content">
       <h3 id="character-modal-title">Add Character</h3>
@@ -196,22 +214,18 @@
   <!-- Templates -->
   <template id="resource-template">
     <div class="spellslot-item card small resource-item">
-      <button class="small-cross slot-remove" aria-label="Remove resource">&#10005;</button>
       <div class="slot-row">
         <div class="slot-left"><div class="resource-label" data-key="label"></div></div>
         <div class="slot-center"><div class="spellslot-controls resource-controls" data-key="controls"></div></div>
-        <div class="slot-right"></div>
       </div>
     </div>
   </template>
 
   <template id="spellslot-template">
     <div class="spellslot-item card small">
-      <button class="small-cross slot-remove" aria-label="Remove spell slots">&#10005;</button>
       <div class="slot-row">
         <div class="slot-left"><div class="spellslot-label" data-key="level"></div></div>
         <div class="slot-center"><div class="spellslot-controls" data-key="controls"></div></div>
-        <div class="slot-right"></div>
       </div>
     </div>
   </template>
