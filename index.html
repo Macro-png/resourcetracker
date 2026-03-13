@@ -9,10 +9,9 @@
   <link rel="manifest" href="pwa/manifest.json" />
 </head>
 <body>
-
-  <header class="app-header">
-    <h1>Resource Tracker</h1>
-    <div class="toolbar">
+  <header class="app-header" id="app-header">
+    <h1 class="app-title">Resource Tracker</h1>
+    <div class="app-toolbar">
       <button id="export-btn" aria-label="Export data">⬇ Export</button>
       <button id="import-btn" aria-label="Import data">⬆ Import</button>
       <button id="pwa-install-btn" hidden aria-hidden="true">Install</button>
@@ -28,11 +27,9 @@
   <!-- SESSION SCREEN -->
   <main id="session-screen" class="screen" hidden>
     <div class="session-toprow">
-      <button id="back-btn" class="link-btn">← Back</button>
-      <div class="session-title-block">
-        <h2 id="character-name" class="character-title"></h2>
-      </div>
-      <button id="edit-btn" class="link-btn">Edit</button>
+      <button id="back-btn" class="session-nav-btn">‹</button>
+      <h2 id="character-name" class="character-title"></h2>
+      <button id="edit-btn" class="session-nav-btn">✎</button>
     </div>
 
     <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive"></div>

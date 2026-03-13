@@ -27,11 +27,13 @@ loadState();
 function showCharacterList() {
   document.getElementById("session-screen").hidden = true;
   document.getElementById("character-list-screen").hidden = false;
+  document.getElementById("app-header").hidden = false;
 }
 
 function showSession() {
   document.getElementById("character-list-screen").hidden = true;
   document.getElementById("session-screen").hidden = false;
+  document.getElementById("app-header").hidden = true;
 }
 
 // ─── Character List ───────────────────────────────────────────────────────────
@@ -867,7 +869,7 @@ document.getElementById("back-btn").addEventListener("click", () => {
 
 document.getElementById('edit-btn').addEventListener('click', () => {
   editMode = !editMode;
-  document.getElementById('edit-btn').textContent = editMode ? 'Done' : 'Edit';
+  document.getElementById('edit-btn').textContent = editMode ? '✓' : '✎';
   renderSession();
 });
 
