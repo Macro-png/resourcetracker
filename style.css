@@ -38,6 +38,7 @@ main {
   margin: 0 auto;
   width: 100%;
   padding: 0 0.75rem;
+  box-sizing: border-box;
 }
 
 .row {
@@ -71,9 +72,11 @@ html, body {
 #session-screen {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   height: 0;
   width: 100%;
+  scrollbar-width: none;
 }
 
 /* -----------------------------
@@ -542,10 +545,12 @@ button:disabled { opacity: 0.5; }
     font-size: 15px;
   }
 
-  main { 
-    max-width: 100%; 
+  main {
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
     padding: 0 0.75rem;
-    margin-top: 0.5rem;
+    box-sizing: border-box;
   }
 
   .card       { padding: 0.65rem; border-radius: 10px; }
