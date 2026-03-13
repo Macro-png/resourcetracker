@@ -15,8 +15,10 @@
 body {
   background-color: #121212;
   color: #f5f5f5;
-  min-height: 100vh;
-  padding: 1rem;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
 }
 
 /* -----------------------------
@@ -44,7 +46,12 @@ main {
 }
 
 /* Prevent horizontal overflow */
-html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  height: 100%;
+}
 
 /* Safe area insets for notched devices */
 :root {
@@ -56,6 +63,14 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
 .card h3 {
   text-align: center;
+}
+
+#character-list-screen,
+#session-screen {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  height: 0; /* force flex child to respect flex:1 correctly */
 }
 
 /* -----------------------------
@@ -153,7 +168,12 @@ button:disabled { opacity: 0.5; }
 .slot-toggle:focus-within .slot-box { outline: 3px solid rgba(124,58,237,0.12); }
 
 /* Slot row layout */
-.slot-row    { display: flex; align-items: center; gap: 1rem; }
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 36px; /* always reserve space for the remove button */
+}
 .slot-left   { width: 120px; text-align: left; padding-right: 0.6rem; flex: 0 0 120px; }
 .slot-center { display: flex; align-items: center; justify-content: center; flex: 1; }
 .slot-right  { width: 44px; display: flex; align-items: center; justify-content: flex-end; flex: 0 0 44px; padding-right: 6px; }
@@ -372,6 +392,9 @@ button:disabled { opacity: 0.5; }
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
   margin-top: 0.25rem;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .exhaustion-title {
@@ -382,8 +405,14 @@ button:disabled { opacity: 0.5; }
 
 .exhaustion-boxes {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.3rem;
   justify-content: center;
+  width: 100%;
+}
+
+.exhaustion-boxes .slot-toggle .slot-box {
+  width: 24px;
+  height: 24px;
 }
 
 /* -----------------------------
