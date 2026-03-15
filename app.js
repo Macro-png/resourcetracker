@@ -2,6 +2,7 @@
 
 let state = { characters: [], selectedCharacterId: null };
 let editMode = false;
+let activeTab = 'stats';
 
 function getSelectedCharacter() {
   return state.characters.find(c => c.id === state.selectedCharacterId);
@@ -30,7 +31,33 @@ function showSession() {
   document.getElementById('character-list-screen').hidden = true;
   document.getElementById('session-screen').hidden = false;
   document.getElementById('app-header').hidden = true;
+  switchTab('stats');
 }
+
+function switchTab(tab) {
+  activeTab = tab;
+  const statsPanel = document.getElementById('stats-panel');
+  const invPanel   = document.getElementById('inventory-panel');
+  const statsBtn   = document.getElementById('tab-stats');
+  const invBtn     = document.getElementById('tab-inventory');
+  const isStats    = tab === 'stats';
+  statsPanel.hidden = !isStats;
+  invPanel.hidden   = isStats;
+  statsBtn.classList.toggle('active', isStats);
+  invBtn.classList.toggle('active', !isStats);
+  const c = getSelectedCharacter();
+  if (!c) return;
+  if (isStats) {
+    document.getElementById('add-spellslot-btn').hidden = !editMode;
+    document.getElementById('add-resource-btn').hidden = !editMode;
+    document.getElementById('edit-character-btn').hidden = !editMode;
+  } else {
+    renderInventory(c);
+  }
+}
+
+document.getElementById('tab-stats').addEventListener('click', () => switchTab('stats'));
+document.getElementById('tab-inventory').addEventListener('click', () => switchTab('inventory'));
 
 // ─── Swipe to delete ─────────────────────────────────────────────────────────
 
@@ -374,10 +401,11 @@ function renderResources(c) {
     const el = template.content.firstElementChild.cloneNode(true);
     el.querySelector('[data-key="label"]').textContent = r.name;
 
+    // Edit mode: show inline max input below the name
     const controls = el.querySelector('[data-key="controls"]');
     controls.innerHTML = '';
 
-    if (r.max <= 4) {
+    if (r.max < 4) {
       // ── Checkbox mode (like spell slots) ──
       controls.className = 'spellslot-controls resource-controls';
       for (let i = 0; i < r.max; i++) {
@@ -417,7 +445,7 @@ function renderResources(c) {
 
       // + add box — at max 3 clicking it pushes to 4 which switches to counter mode
       const addLabel = document.createElement('label');
-      addLabel.className = 'slot-toggle';
+      addLabel.className = 'slot-toggle slot-add-toggle';
       addLabel.title = 'Add one more';
       const addBox = document.createElement('span');
       addBox.className = 'slot-box slot-add-box';
@@ -426,7 +454,7 @@ function renderResources(c) {
       addLabel.addEventListener('click', () => {
         if (!editMode) return;
         r.max++;
-        r.current = Math.min(r.current || 0, r.max);
+        r.current = Math.min(r.max, (r.current || 0) + 1);
         saveState();
         renderSession();
       });
@@ -440,10 +468,20 @@ function renderResources(c) {
         setTimeout(() => btn.classList.remove('flash'), 200);
       };
 
-      const dec = document.createElement('button');
-      dec.className = 'resource-counter-btn';
-      dec.textContent = '−';
-      dec.addEventListener('click', () => {
+      controls.className = 'spellslot-controls resource-controls';
+
+      const makeBox = (text) => {
+        const label = document.createElement('label');
+        label.className = 'slot-toggle';
+        const box = document.createElement('span');
+        box.className = 'slot-box resource-counter-box';
+        box.textContent = text;
+        label.appendChild(box);
+        return { label, box };
+      };
+
+      const { label: decLabel, box: decBox } = makeBox('−');
+      decLabel.addEventListener('click', () => {
         if (editMode) {
           if (r.max <= 1) return;
           r.max--;
@@ -453,19 +491,17 @@ function renderResources(c) {
           r.current = Math.max(0, r.current - 1);
         }
         saveState();
-        flash(dec);
-        val.textContent = `${r.current} / ${r.max}`;
+        flash(decBox);
+        valBox.textContent = `${r.current}/${r.max}`;
         setTimeout(() => renderSession(), 210);
       });
 
-      const val = document.createElement('div');
-      val.className = 'resource-counter-value';
-      val.textContent = `${r.current} / ${r.max}`;
+      const { label: valLabel, box: valBox } = makeBox(`${r.current}/${r.max}`);
+      valLabel.style.cursor = 'default';
+      valLabel.style.pointerEvents = 'none';
 
-      const inc = document.createElement('button');
-      inc.className = 'resource-counter-btn';
-      inc.textContent = '+';
-      inc.addEventListener('click', () => {
+      const { label: incLabel, box: incBox } = makeBox('+');
+      incLabel.addEventListener('click', () => {
         if (editMode) {
           r.max++;
           r.current = Math.min(r.current, r.max);
@@ -474,14 +510,14 @@ function renderResources(c) {
           r.current = Math.min(r.max, r.current + 1);
         }
         saveState();
-        flash(inc);
-        val.textContent = `${r.current} / ${r.max}`;
+        flash(incBox);
+        valBox.textContent = `${r.current}/${r.max}`;
         setTimeout(() => renderSession(), 210);
       });
 
-      controls.appendChild(dec);
-      controls.appendChild(val);
-      controls.appendChild(inc);
+      controls.appendChild(decLabel);
+      controls.appendChild(valLabel);
+      controls.appendChild(incLabel);
     }
 
     makeSwipeable(el, () => {
@@ -572,7 +608,7 @@ function renderSpellSlots(c) {
     const maxAllowed = s.pact ? 2 : 4;
     if (s.max < maxAllowed) {
       const addLabel = document.createElement('label');
-      addLabel.className = 'slot-toggle';
+      addLabel.className = 'slot-toggle slot-add-toggle';
       addLabel.title = `Add a ${s.pact ? 'pact ' : ''}slot`;
       const addBox = document.createElement('span');
       addBox.className = 'slot-box slot-add-box';
@@ -904,10 +940,12 @@ document.getElementById('import-file').addEventListener('change', async ev => {
 document.getElementById('edit-btn').addEventListener('click', () => {
   editMode = !editMode;
   document.getElementById('edit-btn').textContent = editMode ? '✓' : '✎';
+  document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
   document.getElementById('add-spellslot-btn').hidden = !editMode;
   document.getElementById('add-resource-btn').hidden = !editMode;
   document.getElementById('edit-character-btn').hidden = !editMode;
-  document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
+  const c = getSelectedCharacter();
+  if (c) renderInventory(c);
 
   if (!editMode) {
     document.querySelectorAll('.swipe-item.swiped').forEach(el => {
@@ -1039,6 +1077,9 @@ document.getElementById('long-rest').addEventListener('click', () => {
       deathSaves: { success: 0, failure: 0 },
       spellSlots: buildSpellSlotsFromCasterInfo(full, half, pact),
       resources: [], statuses: [], exhaustion: 0,
+      coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+      items: [],
+      components: [],
     };
 
     state.characters.push(ch);
@@ -1176,6 +1217,548 @@ document.getElementById('long-rest').addEventListener('click', () => {
     saveState(); renderSession();
     close(); form.reset();
     showToast(`Added level ${level} spell slots`);
+  });
+})();
+
+// ─── Coin helper ──────────────────────────────────────────────────────────────
+
+// Spend `spendCP` copper from c.coins using minimal downward conversion.
+// Never converts up. EP is never used for giving change.
+function spendCoins(c, gpAmount) {
+  if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  const spendCP = Math.round(gpAmount * COIN_IN_CP['gp']);
+  return _spendCP(c, spendCP);
+}
+
+function _spendCP(c, spendCP) {
+  if (coinsToCP(c.coins) < spendCP) {
+    showToast(`Not enough coins!`);
+    return false;
+  }
+
+  const coins = { ...c.coins };
+  let remaining = spendCP;
+
+  // Step 1: pay from existing coins, lowest first (including EP), no conversion
+  for (const d of ['cp', 'sp', 'ep', 'gp', 'pp']) {
+    if (remaining <= 0) break;
+    const val = COIN_IN_CP[d];
+    const canUse = Math.min(coins[d] || 0, Math.floor(remaining / val));
+    coins[d] -= canUse;
+    remaining -= canUse * val;
+  }
+
+  // Step 2: if remainder, break the smallest coin that covers it
+  if (remaining > 0) {
+    for (const d of ['cp', 'sp', 'ep', 'gp', 'pp']) {
+      if (COIN_IN_CP[d] >= remaining && (coins[d] || 0) > 0) {
+        coins[d]--;
+        const change = COIN_IN_CP[d] - remaining;
+        remaining = 0;
+        // Give change back downward, no EP
+        let changeRem = change;
+        for (const cd of ['gp', 'sp', 'cp']) {
+          const cv = COIN_IN_CP[cd];
+          const give = Math.floor(changeRem / cv);
+          if (give > 0) { coins[cd] = (coins[cd] || 0) + give; changeRem -= give * cv; }
+        }
+        break;
+      }
+    }
+  }
+
+  if (remaining > 0) { showToast(`Not enough coins!`); return false; }
+  c.coins = coins;
+  return true;
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+// Coin values in CP: PP=1000, GP=100, EP=50, SP=10, CP=1
+const COIN_ORDER  = ['cp', 'sp', 'ep', 'gp', 'pp'];
+const COIN_IN_CP  = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 };
+
+function coinsToCP(coins) {
+  return COIN_ORDER.reduce((sum, d) => sum + (coins[d] || 0) * COIN_IN_CP[d], 0);
+}
+
+function cpToCoins(totalCP) {
+  const result = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  let rem = Math.floor(totalCP);
+  // Never auto-convert into EP or PP — only use GP, SP, CP
+  for (const d of ['gp', 'sp', 'cp']) {
+    result[d] = Math.floor(rem / COIN_IN_CP[d]);
+    rem -= result[d] * COIN_IN_CP[d];
+  }
+  return result;
+}
+
+function renderInventory(c) {
+  if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  if (!c.items) c.items = [];
+  if (!c.components) c.components = [];
+  if (!('attunement' in c)) c.attunement = 0;
+  if (!('attunementMax' in c)) c.attunementMax = 3;
+
+  // Coins
+  COIN_ORDER.forEach(denom => {
+    const input = document.querySelector(`.coin-box[data-coin="${denom}"] .coin-input`);
+    if (input) input.value = c.coins[denom] || 0;
+  });
+
+  // Attunement boxes
+  const boxesEl = document.getElementById('attunement-boxes');
+  boxesEl.innerHTML = '';
+  for (let i = 0; i < c.attunementMax; i++) {
+    const label = document.createElement('label');
+    label.className = 'slot-toggle';
+    label.title = `Attunement slot ${i + 1}`;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'slot-checkbox';
+    cb.checked = c.attunement > i;
+    cb.setAttribute('aria-label', `Attunement slot ${i + 1}`);
+    cb.addEventListener('change', () => {
+      if (editMode) {
+        if (c.attunementMax > 3) {
+          c.attunementMax--;
+          c.attunement = Math.min(c.attunement, c.attunementMax);
+        }
+      } else {
+        c.attunement = cb.checked
+          ? Math.min(c.attunementMax, c.attunement + 1)
+          : Math.max(0, c.attunement - 1);
+      }
+      saveState(); renderInventory(c);
+    });
+    const box = document.createElement('span');
+    box.className = 'slot-box attunement-box';
+    label.appendChild(cb);
+    label.appendChild(box);
+    boxesEl.appendChild(label);
+  }
+
+  // + add box (edit mode only, max 6)
+  if (c.attunementMax < 6) {
+    const addLabel = document.createElement('label');
+    addLabel.className = 'slot-toggle slot-add-toggle';
+    addLabel.title = 'Add attunement slot';
+    const addBox = document.createElement('span');
+    addBox.className = 'slot-box attunement-box slot-add-box';
+    addBox.textContent = '+';
+    addLabel.appendChild(addBox);
+    addLabel.addEventListener('click', () => {
+      if (!editMode) return;
+      c.attunementMax++;
+      saveState(); renderInventory(c);
+    });
+    boxesEl.appendChild(addLabel);
+  }
+
+  // Items list
+  renderItemList(c, c.items, document.getElementById('items-container'), (item) => {
+    c.items = c.items.filter(x => x.id !== item.id);
+  });
+
+  // Components list
+  renderItemList(c, c.components, document.getElementById('components-container'), (item) => {
+    c.components = c.components.filter(x => x.id !== item.id);
+  }, true);
+
+  document.getElementById('add-item-btn').hidden = !editMode;
+  document.getElementById('add-component-btn').hidden = !editMode;
+}
+
+function renderItemList(c, list, container, onDelete, isComponent = false) {
+  container.innerHTML = '';
+  list.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'item-row card small';
+
+    const left = document.createElement('div');
+    left.className = 'item-left';
+
+    const right = document.createElement('div');
+    right.className = 'item-right';
+
+    if (isComponent) {
+      el.className = 'component-card card small';
+
+      // ── TOP ROW: name + remaining/price ──
+      const topRow = document.createElement('div');
+      topRow.className = 'component-top-row';
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'item-name';
+      nameEl.textContent = item.name;
+      topRow.appendChild(nameEl);
+
+      if (!editMode) {
+        if (item.qty === null) {
+          const remEl = document.createElement('span');
+          remEl.className = 'component-meta component-remaining';
+          remEl.textContent = `${item.gpAmount} gp`;
+          topRow.appendChild(remEl);
+        } else {
+          // Group name + price on the left
+          const leftGroup = document.createElement('div');
+          leftGroup.className = 'component-name-group';
+          leftGroup.appendChild(nameEl);
+          const priceEl = document.createElement('span');
+          priceEl.className = 'component-meta';
+          priceEl.textContent = `${item.price} gp`;
+          leftGroup.appendChild(priceEl);
+          topRow.insertBefore(leftGroup, topRow.firstChild);
+
+          const qtyEl = document.createElement('span');
+          qtyEl.className = 'component-meta component-remaining';
+          qtyEl.textContent = `${item.qty} left`;
+          topRow.appendChild(qtyEl);
+        }
+      }
+
+      el.appendChild(topRow);
+
+      // ── BOTTOM ROW: actions ──
+      if (editMode) {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'item-use-btn';
+        editBtn.textContent = '✎ Edit';
+        editBtn.style.cssText = 'border-color:var(--muted);color:var(--muted);width:100%;margin-top:0.4rem;';
+        editBtn.addEventListener('click', () => openComponentEditModal(item, c));
+        el.appendChild(editBtn);
+      } else if (item.qty === null) {
+        // Pool mode: Use | [amount] | Buy  (HP-card style)
+        const actionRow = document.createElement('div');
+        actionRow.className = 'component-action-row';
+
+        const useBtn = document.createElement('button');
+        useBtn.className = 'hp-action-pill damage component-action-pill';
+        useBtn.textContent = 'Use';
+
+        const amtInput = document.createElement('input');
+        amtInput.type = 'number'; amtInput.min = '0';
+        amtInput.className = 'hp-amount-input component-amount-input';
+        amtInput.setAttribute('aria-label', 'GP amount');
+
+        const buyBtn = document.createElement('button');
+        buyBtn.className = 'hp-action-pill heal component-action-pill';
+        buyBtn.textContent = 'Buy';
+
+        useBtn.addEventListener('click', () => {
+          const amount = parseFloat(amtInput.value) || 0;
+          if (amount <= 0) { amtInput.focus(); return; }
+          if (amount > item.gpAmount) { showToast(`Only ${item.gpAmount} gp left`); return; }
+          item.gpAmount = Math.max(0, item.gpAmount - amount);
+          amtInput.value = '';
+          saveState(); renderInventory(c);
+          showToast(`Used ${amount} gp — ${item.name} (${item.gpAmount} gp left)`);
+        });
+
+        buyBtn.addEventListener('click', () => {
+          const amount = parseFloat(amtInput.value) || 0;
+          if (amount <= 0) { amtInput.focus(); return; }
+          if (!spendCoins(c, amount)) return;
+          item.gpAmount = (item.gpAmount || 0) + amount;
+          amtInput.value = '';
+          saveState(); renderInventory(c);
+          showToast(`Bought ${amount} gp of ${item.name}`);
+        });
+
+        actionRow.appendChild(useBtn);
+        actionRow.appendChild(amtInput);
+        actionRow.appendChild(buyBtn);
+        el.appendChild(actionRow);
+      } else {
+        // Qty mode: Use | qty | Buy
+        const actionRow = document.createElement('div');
+        actionRow.className = 'component-action-row';
+
+        const useBtn = document.createElement('button');
+        useBtn.className = 'hp-action-pill damage component-action-pill';
+        useBtn.textContent = 'Use';
+        useBtn.addEventListener('click', () => {
+          if (item.qty <= 0) { showToast(`No ${item.name} remaining`); return; }
+          item.qty--;
+          saveState(); renderInventory(c);
+          showToast(`Used 1 ${item.name} (${item.qty} left)`);
+        });
+
+        const buyBtn = document.createElement('button');
+        buyBtn.className = 'hp-action-pill heal component-action-pill';
+        buyBtn.textContent = 'Buy';
+        buyBtn.addEventListener('click', () => {
+          const cost = item.price || 0;
+          if (cost > 0 && !spendCoins(c, cost)) return;
+          item.qty++;
+          saveState(); renderInventory(c);
+          showToast(cost > 0 ? `Bought 1 ${item.name} for ${cost} gp` : `Added 1 ${item.name}`);
+        });
+
+        actionRow.appendChild(useBtn);
+        actionRow.appendChild(buyBtn);
+        el.appendChild(actionRow);
+      }
+
+      makeSwipeable(el, () => { onDelete(item); saveState(); renderInventory(c); });
+      container.appendChild(el);
+      return; // skip generic left/right append below
+
+    } else {
+      // ── Regular item ──
+      const nameEl = document.createElement('div');
+      nameEl.className = 'item-name';
+      nameEl.textContent = item.name;
+      left.appendChild(nameEl);
+
+      if (item.attuned) {
+        const badgesEl = document.createElement('div');
+        badgesEl.className = 'item-badges';
+        const b = document.createElement('span');
+        b.className = 'item-badge attuned-badge';
+        b.textContent = '⟳ Attuned';
+        badgesEl.appendChild(b);
+        left.appendChild(badgesEl);
+      }
+
+      const dec = document.createElement('button');
+      dec.className = 'item-qty-btn';
+      dec.textContent = '−';
+      dec.addEventListener('click', () => {
+        if (item.qty <= 1) {
+          if (editMode) { onDelete(item); saveState(); renderInventory(c); }
+          return;
+        }
+        item.qty--;
+        saveState(); renderInventory(c);
+      });
+
+      const qtyEl = document.createElement('span');
+      qtyEl.className = 'item-qty';
+      qtyEl.textContent = item.qty;
+
+      const inc = document.createElement('button');
+      inc.className = 'item-qty-btn';
+      inc.textContent = '+';
+      inc.addEventListener('click', () => { item.qty++; saveState(); renderInventory(c); });
+
+      right.appendChild(dec);
+      right.appendChild(qtyEl);
+      right.appendChild(inc);
+    }
+
+    el.appendChild(left);
+    el.appendChild(right);
+
+    makeSwipeable(el, () => { onDelete(item); saveState(); renderInventory(c); });
+    container.appendChild(el);
+  });
+}
+
+// ─── Coin inline edits ────────────────────────────────────────────────────────
+
+document.querySelectorAll('.coin-input').forEach(input => {
+  const denom = input.closest('.coin-box').dataset.coin;
+  input.addEventListener('change', () => {
+    const c = getSelectedCharacter(); if (!c) return;
+    if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+    c.coins[denom] = Math.max(0, parseInt(input.value, 10) || 0);
+    input.value = c.coins[denom];
+    saveState();
+  });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+});
+
+document.getElementById('coin-add').addEventListener('click', () => {
+  const c = getSelectedCharacter(); if (!c) return;
+  if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  const amount = parseInt(document.getElementById('coin-amount').value, 10) || 0;
+  const denom  = document.getElementById('coin-denom').value;
+  if (amount <= 0) return;
+  c.coins[denom] = (c.coins[denom] || 0) + amount;
+  document.getElementById('coin-amount').value = '';
+  saveState(); renderInventory(c);
+  showToast(`+${amount} ${denom.toUpperCase()}`);
+});
+
+document.getElementById('coin-spend').addEventListener('click', () => {
+  const c = getSelectedCharacter(); if (!c) return;
+  if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  const amount = parseInt(document.getElementById('coin-amount').value, 10) || 0;
+  const denom  = document.getElementById('coin-denom').value;
+  if (amount <= 0) return;
+  const spendCP = amount * COIN_IN_CP[denom];
+  if (!_spendCP(c, spendCP)) return;
+  document.getElementById('coin-amount').value = '';
+  saveState(); renderInventory(c);
+  showToast(`−${amount} ${denom.toUpperCase()}`);
+});
+
+document.getElementById('coin-convert').addEventListener('click', () => {
+  const c = getSelectedCharacter(); if (!c) return;
+  if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+
+  // Convert cp → sp → gp → pp, never touching ep
+  let rem = (c.coins.cp || 0);
+  c.coins.sp = (c.coins.sp || 0) + Math.floor(rem / 10);
+  c.coins.cp = rem % 10;
+
+  rem = c.coins.sp;
+  c.coins.gp = (c.coins.gp || 0) + Math.floor(rem / 10);
+  c.coins.sp = rem % 10;
+
+  rem = c.coins.gp;
+  c.coins.pp = (c.coins.pp || 0) + Math.floor(rem / 10);
+  c.coins.gp = rem % 10;
+
+  saveState(); renderInventory(c);
+  showToast('Coins converted');
+});
+
+// ─── Item modal ───────────────────────────────────────────────────────────────
+
+(function initItemModal() {
+  const modal   = document.getElementById('item-modal');
+  const form    = document.getElementById('item-form');
+  const openBtn = document.getElementById('add-item-btn');
+  const cancel  = document.getElementById('item-cancel');
+  const nameIn  = document.getElementById('item-form-name');
+  const qtyIn   = document.getElementById('item-form-qty');
+  const attIn   = document.getElementById('item-form-attuned');
+  const errEl   = document.getElementById('item-form-error');
+
+  const open  = () => { form.reset(); qtyIn.value = 1; errEl.hidden = true; modal.hidden = false; nameIn.focus(); };
+  const close = () => { modal.hidden = true; };
+
+  openBtn.addEventListener('click', open);
+  cancel.addEventListener('click', close);
+  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    errEl.hidden = true;
+    const name = nameIn.value.trim();
+    if (!name) { errEl.textContent = 'Please enter a name.'; errEl.hidden = false; return; }
+    const c = getSelectedCharacter(); if (!c) return;
+    if (!c.items) c.items = [];
+    if (attIn.checked && c.items.filter(i => i.attuned).length >= 3) {
+      errEl.textContent = 'Already at 3 attuned items (max).'; errEl.hidden = false; return;
+    }
+    c.items.push({
+      id: crypto.randomUUID(), name,
+      qty: Math.max(1, parseInt(qtyIn.value, 10) || 1),
+      attuned: attIn.checked,
+    });
+    saveState(); renderInventory(c);
+    close(); showToast(`Added '${name}'`);
+  });
+})();
+
+// ─── Component modal ──────────────────────────────────────────────────────────
+
+(function initComponentModal() {
+  const modal   = document.getElementById('component-modal');
+  const form    = document.getElementById('component-form');
+  const openBtn = document.getElementById('add-component-btn');
+  const cancel  = document.getElementById('component-cancel');
+  const nameIn  = document.getElementById('component-form-name');
+  const gpIn    = document.getElementById('component-form-gp');
+  const qtyIn   = document.getElementById('component-form-qty');
+  const errEl   = document.getElementById('component-form-error');
+
+  const open  = () => { form.reset(); errEl.hidden = true; modal.hidden = false; nameIn.focus(); };
+  const close = () => { modal.hidden = true; };
+
+  openBtn.addEventListener('click', open);
+  cancel.addEventListener('click', close);
+  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    errEl.hidden = true;
+    const name = nameIn.value.trim();
+    const gp   = parseFloat(gpIn.value);
+    if (!name) { errEl.textContent = 'Please enter a name.'; errEl.hidden = false; return; }
+    if (isNaN(gp) || gp < 0) { errEl.textContent = 'Please enter a valid GP amount.'; errEl.hidden = false; return; }
+    const c = getSelectedCharacter(); if (!c) return;
+    if (!c.components) c.components = [];
+
+    const qtyVal = qtyIn.value.trim();
+    const hasQty = qtyVal !== '' && parseInt(qtyVal, 10) >= 1;
+
+    c.components.push(hasQty ? {
+      // qty mode: gp = worth per item, qty = count
+      id: crypto.randomUUID(), name,
+      qty: parseInt(qtyVal, 10),
+      price: gp,
+      gpAmount: null,
+    } : {
+      // pool mode: gp = total pool, no qty
+      id: crypto.randomUUID(), name,
+      qty: null,
+      price: null,
+      gpAmount: gp,
+    });
+
+    saveState(); renderInventory(c);
+    close(); showToast(`Added component '${name}'`);
+  });
+})();
+
+// ─── Component edit modal ─────────────────────────────────────────────────────
+
+let _compEditItem = null;
+let _compEditChar = null;
+
+function openComponentEditModal(item, c) {
+  _compEditItem = item;
+  _compEditChar = c;
+
+  const isPool = item.qty === null;
+  document.getElementById('component-edit-modal-title').textContent = `Edit: ${item.name}`;
+  document.getElementById('component-edit-mode-pool').hidden = !isPool;
+  document.getElementById('component-edit-mode-qty').hidden  = isPool;
+
+  if (isPool) {
+    document.getElementById('component-edit-gp').value = item.gpAmount;
+  } else {
+    document.getElementById('component-edit-price').value = item.price;
+    document.getElementById('component-edit-qty').value   = item.qty;
+  }
+
+  document.getElementById('component-edit-error').hidden = true;
+  document.getElementById('component-edit-modal').hidden = false;
+}
+
+(function initComponentEditModal() {
+  const modal  = document.getElementById('component-edit-modal');
+  const form   = document.getElementById('component-edit-form');
+  const cancel = document.getElementById('component-edit-cancel');
+  const close  = () => { modal.hidden = true; };
+
+  cancel.addEventListener('click', close);
+  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const item = _compEditItem;
+    const c    = _compEditChar;
+    if (!item || !c) return;
+
+    if (item.qty === null) {
+      const gp = parseFloat(document.getElementById('component-edit-gp').value);
+      if (isNaN(gp) || gp < 0) { document.getElementById('component-edit-error').textContent = 'Enter a valid GP amount.'; document.getElementById('component-edit-error').hidden = false; return; }
+      item.gpAmount = gp;
+    } else {
+      const price = parseFloat(document.getElementById('component-edit-price').value) || 0;
+      const qty   = parseInt(document.getElementById('component-edit-qty').value, 10) || 0;
+      item.price = Math.max(0, price);
+      item.qty   = Math.max(0, qty);
+    }
+
+    saveState(); renderInventory(c);
+    close();
+    showToast(`Updated ${item.name}`);
   });
 })();
 

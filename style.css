@@ -522,13 +522,18 @@ button:disabled { opacity: 0.5; }
   color: var(--muted);
   font-size: 1.4rem;
   font-weight: 400;
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
 }
 
-.edit-mode .slot-add-box {
+/* Hide the whole toggle label (not just the box) outside edit mode */
+.slot-add-toggle {
+  display: none;
+}
+
+.edit-mode .slot-add-toggle {
   display: inline-flex;
 }
 
@@ -538,42 +543,20 @@ button:disabled { opacity: 0.5; }
 }
 
 /* Resource counter mode (max > 4) */
-.resource-counter-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem; /* matches .spellslot-controls gap */
-}
-
-.resource-counter-btn {
-  width: 50px; height: 50px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: transparent;
-  color: var(--text);
-  font-size: 1.5rem;
-  font-weight: 700;
+.resource-counter-box {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: unset;
-  padding: 0;
-  flex-shrink: 0;
-  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+  cursor: pointer;
 }
 
-.resource-counter-btn.flash {
+.resource-counter-box.flash {
   background: var(--purple);
   border-color: #6d28d9;
   box-shadow: 0 4px 14px rgba(124,58,237,0.3);
-}
-
-.resource-counter-value {
-  width: 50px; /* exactly one slot-box wide — sits at position 2 */
-  flex-shrink: 0;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--text);
-  text-align: center;
 }
 
 /* ─── CONCENTRATION ──────────────────────────────────────────────────────────── */
@@ -714,3 +697,518 @@ button:disabled { opacity: 0.5; }
   .character-title { font-size: 1.3rem; }
   .modal-content { width: 100%; max-width: 100%; border-radius: 0; padding: 1rem; }
 }
+/* ─── SCREEN PANELS (session tabs) ──────────────────────────────────────────── */
+
+#session-screen { overflow: hidden; }
+
+.screen-panel {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  height: 0;
+  width: 100%;
+  scrollbar-width: none;
+}
+.screen-panel::-webkit-scrollbar { display: none; }
+
+/* ─── TAB BAR ────────────────────────────────────────────────────────────────── */
+
+.session-tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid #222;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 10;
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-top: 2px solid transparent;
+  color: var(--muted);
+  padding: 0.65rem 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-height: 52px;
+  border-radius: 0;
+}
+
+.tab-btn.active {
+  color: var(--purple);
+  border-top-color: var(--purple);
+}
+
+.tab-btn:active { background: #2a2a2a; }
+
+/* ─── COINS ──────────────────────────────────────────────────────────────────── */
+
+.coins-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.coin-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.15rem 0.4rem;
+  gap: 0.15rem;
+}
+
+.coin-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+}
+
+.coin-box[data-coin="cp"] .coin-label { color: #d97706; }
+.coin-box[data-coin="sp"] .coin-label { color: #94a3b8; }
+.coin-box[data-coin="ep"] .coin-label { color: #6ee7b7; }
+.coin-box[data-coin="gp"] .coin-label { color: #fbbf24; }
+.coin-box[data-coin="pp"] .coin-label { color: #c084fc; }
+
+.coin-input {
+  width: 100%;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 0;
+  min-width: 0;
+  min-height: unset;
+}
+.coin-input:focus { outline: none; color: var(--purple); }
+
+.coin-transaction-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.coin-amount-input {
+  flex: 1.5;
+  padding: 0.5rem 0.4rem;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: inherit;
+  text-align: center;
+  font-size: 1rem;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.coin-denom-select {
+  flex: 1;
+  padding: 0.5rem 0.2rem;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-height: 44px;
+  text-align: center;
+}
+
+.coin-transaction-row .hp-action-pill { flex: 1; font-size: 0.8rem; padding: 0.5rem 0.3rem; }
+
+/* ─── ITEMS ──────────────────────────────────────────────────────────────────── */
+
+.items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.items-header h3 { margin-bottom: 0; border: none; padding: 0; }
+
+.attunement-badge {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--purple);
+  background: rgba(124,58,237,0.1);
+  border: 1px solid rgba(124,58,237,0.2);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+.attunement-badge.attunement-full {
+  color: #f97316;
+  background: rgba(249,115,22,0.1);
+  border-color: rgba(249,115,22,0.2);
+}
+
+.item-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.item-left { flex: 1; min-width: 0; overflow: hidden; }
+
+.item-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.2rem; }
+
+.item-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.attuned-badge  { color: #a78bfa; background: rgba(124,58,237,0.12); }
+.component-badge { color: #34d399; background: rgba(52,211,153,0.1); }
+
+.item-right { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+
+.item-qty-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: unset;
+  padding: 0;
+}
+
+.item-qty {
+  min-width: 28px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+/* checkbox-label in modals */
+.modal-content .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.modal-content .checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+/* ─── ATTUNEMENT CARD ────────────────────────────────────────────────────────── */
+
+.attunement-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.attunement-header h3 { margin-bottom: 0; border: none; padding: 0; }
+
+.attunement-boxes {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.attunement-box {
+  width: 45px;
+  height: 45px;
+  border-radius: 9px;
+}
+
+/* Coin transaction center group */
+.coin-input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.coin-input-group .hp-amount-input {
+  width: 100%;
+}
+
+.coin-input-group .coin-denom-select {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  min-height: 36px;
+}
+
+.coin-denom-select-inline {
+  flex: 0 0 auto;
+  padding: 0 0.35rem;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  min-height: 44px;
+  text-align: center;
+}
+
+.item-use-btn {
+  padding: 0.25rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--green);
+  background: transparent;
+  color: var(--green);
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-height: 32px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.item-use-btn:active { background: rgba(22,163,74,0.15); }
+
+.component-gp-input {
+  width: 48px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.25rem 0.2rem;
+  color: inherit;
+  min-height: 32px;
+  flex-shrink: 0;
+}
+
+.component-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.component-gp-remaining {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.component-del-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #ffb4b4;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: unset;
+  padding: 0;
+}
+
+.component-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.component-remaining {
+  color: #fbbf24;
+}
+
+/* Component card is the flex row itself */
+.item-row.card {
+  display: block;
+  padding: 0;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+/* swipe-content inside item cards must stay a flex row */
+.item-row .swipe-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+}
+
+/* Resource max editor (edit mode) */
+.resource-max-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.resource-max-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.resource-max-input {
+  width: 48px;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 800;
+  background: var(--surface2);
+  border: 1px solid var(--purple);
+  border-radius: 6px;
+  padding: 0.15rem 0.25rem;
+  color: inherit;
+  min-height: unset;
+}
+
+.component-edit-input {
+  width: 52px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--surface2);
+  border: 1px solid var(--purple);
+  border-radius: 8px;
+  padding: 0.25rem 0.2rem;
+  color: inherit;
+  min-height: 32px;
+  flex-shrink: 0;
+}
+.item-buy-btn {
+  padding: 0.25rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid #fbbf24;
+  background: transparent;
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-height: 32px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.item-buy-btn:active { background: rgba(251,191,36,0.15); }
+
+.coin-convert-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 44px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: unset;
+  padding: 0;
+}
+
+.coin-convert-btn:active {
+  background: #2a2a2a;
+  color: var(--text);
+}
+
+/* ─── COMPONENT CARD ─────────────────────────────────────────────────────────── */
+
+.component-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.component-card .swipe-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem 0.75rem;
+  gap: 0.5rem;
+}
+
+.component-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.component-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.component-action-pill {
+  flex: 1;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.3rem;
+  min-height: 40px;
+}
+
+.component-amount-input {
+  flex: 1.2;
+  min-height: 40px;
+  font-size: 0.95rem;
+}
+
+.component-name-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Remove number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }

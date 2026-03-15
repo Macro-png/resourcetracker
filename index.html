@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#111827" />
   <title>D&D Resource Tracker</title>
   <link rel="stylesheet" href="style.css" />
@@ -38,7 +38,8 @@
       <button id="edit-btn" class="session-nav-btn">&#9998;</button>
     </div>
 
-    <!-- Constrained content -->
+    <!-- Stats Panel -->
+    <div id="stats-panel" class="screen-panel">
     <main class="session-content">
 
       <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive"></div>
@@ -118,6 +119,81 @@
       </div>
 
     </main>
+    </div><!-- /stats-panel -->
+
+    <!-- Inventory Panel -->
+    <div id="inventory-panel" class="screen-panel" hidden>
+      <main class="session-content">
+
+        <!-- COINS -->
+        <section class="card">
+          <h3>Coins</h3>
+          <div class="coins-grid">
+            <div class="coin-box" data-coin="cp">
+              <div class="coin-label">CP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Copper pieces" />
+            </div>
+            <div class="coin-box" data-coin="sp">
+              <div class="coin-label">SP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Silver pieces" />
+            </div>
+            <div class="coin-box" data-coin="ep">
+              <div class="coin-label">EP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Electrum pieces" />
+            </div>
+            <div class="coin-box" data-coin="gp">
+              <div class="coin-label">GP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Gold pieces" />
+            </div>
+            <div class="coin-box" data-coin="pp">
+              <div class="coin-label">PP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Platinum pieces" />
+            </div>
+          </div>
+          <div class="hp-controls-row">
+            <button id="coin-spend" class="hp-action-pill damage">Spend</button>
+            <input id="coin-amount" type="number" min="1" class="hp-amount-input" />
+            <select id="coin-denom" class="coin-denom-select-inline">
+              <option value="cp">CP</option>
+              <option value="sp">SP</option>
+              <option value="ep">EP</option>
+              <option value="gp" selected>GP</option>
+              <option value="pp">PP</option>
+            </select>
+            <button id="coin-add" class="hp-action-pill heal">Add</button>
+            <button id="coin-convert" class="coin-convert-btn" aria-label="Convert to highest denomination">⇑</button>
+          </div>
+        </section>
+
+        <!-- ATTUNEMENT -->
+        <section class="card">
+          <h3>Attunement</h3>
+          <div id="attunement-boxes" class="attunement-boxes"></div>
+        </section>
+
+        <!-- ITEMS -->
+        <section class="card">
+          <h3>Items</h3>
+          <div id="items-container"></div>
+          <button id="add-item-btn" class="link-btn" hidden>+ Add Item</button>
+        </section>
+
+        <!-- SPELL COMPONENTS -->
+        <section class="card">
+          <h3>Spell Components</h3>
+          <div id="components-container"></div>
+          <button id="add-component-btn" class="link-btn" hidden>+ Add Component</button>
+        </section>
+
+      </main>
+    </div><!-- /inventory-panel -->
+
+    <!-- Tab Bar -->
+    <div class="session-tab-bar">
+      <button class="tab-btn active" id="tab-stats">Combat</button>
+      <button class="tab-btn" id="tab-inventory">Inventory</button>
+    </div>
+
   </div>
 
   <!-- MODALS -->
@@ -209,9 +285,59 @@
     </div>
   </div>
 
-  <input id="import-file" type="file" accept="application/json" hidden />
+  <div id="item-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="item-modal-title">
+    <div class="modal-content">
+      <h3 id="item-modal-title">Add Item</h3>
+      <form id="item-form">
+        <label>Name <input id="item-form-name" name="name" required /></label>
+        <label>Quantity <input id="item-form-qty" name="qty" type="number" min="1" value="1" /></label>
+        <label class="checkbox-label"><input type="checkbox" id="item-form-attuned" /> Requires attunement</label>
+        <div id="item-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="item-save">Save</button>
+          <button type="button" id="item-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-  <!-- Templates -->
+  <div id="component-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="component-modal-title">
+    <div class="modal-content">
+      <h3 id="component-modal-title">Add Spell Component</h3>
+      <form id="component-form">
+        <label>Name <input id="component-form-name" name="name" required /></label>
+        <label>GP <input id="component-form-gp" name="gp" type="number" min="0" step="1" required /></label>
+        <label>Qty (optional) <input id="component-form-qty" name="qty" type="number" min="1" step="1" /></label>
+        <div id="component-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="component-save">Save</button>
+          <button type="button" id="component-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="component-edit-modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <h3 id="component-edit-modal-title">Edit Component</h3>
+      <form id="component-edit-form">
+        <div id="component-edit-mode-pool" hidden>
+          <label>GP amount <input id="component-edit-gp" type="number" min="0" step="0.01" /></label>
+        </div>
+        <div id="component-edit-mode-qty" hidden>
+          <label>GP per use <input id="component-edit-price" type="number" min="0" step="0.01" /></label>
+          <label>Quantity <input id="component-edit-qty" type="number" min="0" step="1" /></label>
+        </div>
+        <div id="component-edit-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn">Save</button>
+          <button type="button" id="component-edit-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <input id="import-file" type="file" accept="application/json" hidden />
   <template id="resource-template">
     <div class="spellslot-item card small resource-item">
       <div class="slot-row">
