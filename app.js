@@ -50,6 +50,7 @@ function switchTab(tab) {
   if (isStats) {
     document.getElementById('add-spellslot-btn').hidden = !editMode;
     document.getElementById('add-resource-btn').hidden = !editMode;
+  document.getElementById('add-hitdice-btn').hidden = !editMode;
     document.getElementById('edit-character-btn').hidden = !editMode;
   } else {
     renderInventory(c);
@@ -210,7 +211,7 @@ function renderSession() {
 
   // Reset visibility
   ['hp-card','spellslots-section','resources-section',
-   'conditions-section','rest-section'].forEach(id => {
+   'conditions-section','rest-section','hitdice-section'].forEach(id => {
     document.getElementById(id).hidden = false;
   });
   document.getElementById('dead-card').hidden = true;
@@ -236,7 +237,7 @@ function renderSession() {
   // Dead state
   if (c.dead) {
     ['hp-card','spellslots-section','resources-section',
-     'conditions-section','rest-section','death-saves-card'].forEach(id => {
+     'conditions-section','rest-section','death-saves-card','hitdice-section'].forEach(id => {
       document.getElementById(id).hidden = true;
     });
     document.getElementById('concentration-toggle').hidden = true;
@@ -252,6 +253,7 @@ function renderSession() {
   }
 
   renderDeathSaves(c);
+  renderHitDice(c);
   renderSpellSlots(c);
   renderResources(c);
   renderStatuses(c);
@@ -260,6 +262,7 @@ function renderSession() {
   document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
   document.getElementById('add-spellslot-btn').hidden = !editMode;
   document.getElementById('add-resource-btn').hidden = !editMode;
+  document.getElementById('add-hitdice-btn').hidden = !editMode;
   document.getElementById('edit-character-btn').hidden = !editMode;
 }
 
@@ -868,6 +871,26 @@ function longRest() {
   if (!c) return;
   c.resources.forEach(r => { if (r.recoversOn !== 'none') r.current = r.max; });
   c.spellSlots.forEach(s => { s.used = 0; });
+  if (c.hitDice && c.hitDice.length) {
+    mergeHitDicePools(c);
+    const totalHD = c.hitDice.reduce((s, hd) => s + hd.total, 0);
+    let toRecover = Math.max(1, Math.floor(totalHD / 2));
+    // Prioritize larger dice first
+    for (const size of HD_SIZES) {
+      const hd = c.hitDice.find(x => x.dieType === size);
+      if (!hd || toRecover <= 0) continue;
+      const recover = Math.min(hd.spent, toRecover);
+      hd.spent -= recover;
+      toRecover -= recover;
+    }
+    // Any leftover recovery goes to remaining pools
+    for (const hd of c.hitDice) {
+      if (toRecover <= 0) break;
+      const recover = Math.min(hd.spent, toRecover);
+      hd.spent -= recover;
+      toRecover -= recover;
+    }
+  }
   c.currentHP = c.maxHP;
   c.tempHP = 0;
   c.exhaustion = Math.max(0, (c.exhaustion || 0) - 1);
@@ -943,6 +966,7 @@ document.getElementById('edit-btn').addEventListener('click', () => {
   document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
   document.getElementById('add-spellslot-btn').hidden = !editMode;
   document.getElementById('add-resource-btn').hidden = !editMode;
+  document.getElementById('add-hitdice-btn').hidden = !editMode;
   document.getElementById('edit-character-btn').hidden = !editMode;
   const c = getSelectedCharacter();
   if (c) renderInventory(c);
@@ -1077,6 +1101,7 @@ document.getElementById('long-rest').addEventListener('click', () => {
       deathSaves: { success: 0, failure: 0 },
       spellSlots: buildSpellSlotsFromCasterInfo(full, half, pact),
       resources: [], statuses: [], exhaustion: 0,
+      hitDice: [],
       coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
       items: [],
       components: [],
@@ -1438,6 +1463,7 @@ function renderItemList(c, list, container, onDelete, isComponent = false) {
 
         const amtInput = document.createElement('input');
         amtInput.type = 'number'; amtInput.min = '0';
+        amtInput.placeholder = '0';
         amtInput.className = 'hp-amount-input component-amount-input';
         amtInput.setAttribute('aria-label', 'GP amount');
 
@@ -1761,6 +1787,188 @@ function openComponentEditModal(item, c) {
     showToast(`Updated ${item.name}`);
   });
 })();
+
+// ─── Hit Dice ─────────────────────────────────────────────────────────────────
+
+const HD_SIZES = ['d12', 'd10', 'd8', 'd6']; // largest first for recovery priority
+
+function hdTotalAll(c) {
+  return (c.hitDice || []).reduce((s, hd) => s + hd.total, 0);
+}
+
+function mergeHitDicePools(c) {
+  if (!c.hitDice) return;
+  const merged = {};
+  c.hitDice.forEach(hd => {
+    if (!merged[hd.dieType]) merged[hd.dieType] = { id: hd.id, dieType: hd.dieType, total: 0, spent: 0 };
+    merged[hd.dieType].total += hd.total;
+    merged[hd.dieType].spent += hd.spent;
+  });
+  c.hitDice = HD_SIZES.map(d => merged[d]).filter(Boolean)
+    .concat(Object.values(merged).filter(hd => !HD_SIZES.includes(hd.dieType)));
+}
+
+function renderHitDice(c) {
+  if (!c.hitDice) c.hitDice = [];
+  mergeHitDicePools(c);
+  const container = document.getElementById('hitdice-container');
+  container.innerHTML = '';
+
+  c.hitDice.forEach(hd => {
+    const el = document.createElement('div');
+    el.className = 'spellslot-item card small';
+
+    const slotRow = document.createElement('div');
+    slotRow.className = 'slot-row';
+
+    // Left: die type label
+    const slotLeft = document.createElement('div');
+    slotLeft.className = 'slot-left';
+    const labelEl = document.createElement('div');
+    labelEl.className = 'spellslot-label';
+    labelEl.textContent = hd.dieType;
+    slotLeft.appendChild(labelEl);
+    slotRow.appendChild(slotLeft);
+
+    // Center: checkboxes
+    const slotCenter = document.createElement('div');
+    slotCenter.className = 'slot-center';
+    const controls = document.createElement('div');
+    controls.className = 'spellslot-controls hitdice-controls';
+
+    for (let i = 0; i < hd.total; i++) {
+      const lbl = document.createElement('label');
+      lbl.className = 'slot-toggle';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'slot-checkbox';
+      cb.checked = i < hd.spent; // purple = spent, fills from left
+      cb.setAttribute('aria-label', `${hd.dieType} die ${i + 1}`);
+
+      cb.addEventListener('change', () => {
+        if (editMode) {
+          hd.total--;
+          hd.spent = Math.min(hd.spent, hd.total);
+          if (hd.total === 0) c.hitDice = c.hitDice.filter(x => x.id !== hd.id);
+          saveState(); renderHitDice(c);
+        } else {
+          if (cb.checked) {
+            hd.spent = i + 1; // fill left up to this box
+            saveState(); renderHitDice(c);
+            openHitDiceHealModal(c, hd);
+          } else {
+            hd.spent = i; // uncheck from here rightward
+            saveState(); renderHitDice(c);
+          }
+        }
+      });
+
+      const box = document.createElement('span');
+      box.className = 'slot-box hitdice-box';
+      lbl.appendChild(cb);
+      lbl.appendChild(box);
+      controls.appendChild(lbl);
+    }
+
+    // + add box (edit mode, max 20 total / 5 per row)
+    if (hd.total < 20 && hdTotalAll(c) < 20) {
+      const addLbl = document.createElement('label');
+      addLbl.className = 'slot-toggle slot-add-toggle';
+      const addBox = document.createElement('span');
+      addBox.className = 'slot-box hitdice-box slot-add-box';
+      addBox.textContent = '+';
+      addLbl.appendChild(addBox);
+      addLbl.addEventListener('click', () => {
+        if (!editMode) return;
+        if (hdTotalAll(c) >= 20) return;
+        hd.total++;
+        saveState(); renderHitDice(c);
+      });
+      controls.appendChild(addLbl);
+    }
+
+    slotCenter.appendChild(controls);
+    slotRow.appendChild(slotCenter);
+    el.appendChild(slotRow);
+
+    makeSwipeable(el, () => {
+      c.hitDice = c.hitDice.filter(x => x.id !== hd.id);
+      saveState(); renderHitDice(c);
+    });
+
+    container.appendChild(el);
+  });
+}
+
+// Heal modal
+let _hdHealChar = null;
+
+function openHitDiceHealModal(c, hd) {
+  _hdHealChar = c;
+  document.getElementById('hitdice-heal-title').textContent = `Use ${hd.dieType}`;
+  document.getElementById('hitdice-heal-amount').value = '';
+  document.getElementById('hitdice-heal-modal').hidden = false;
+  setTimeout(() => document.getElementById('hitdice-heal-amount').focus(), 50);
+}
+
+document.getElementById('hitdice-heal-confirm').addEventListener('click', () => {
+  const v = parseInt(document.getElementById('hitdice-heal-amount').value, 10) || 0;
+  if (v > 0 && _hdHealChar) heal(v);
+  document.getElementById('hitdice-heal-modal').hidden = true;
+  if (v > 0) showToast(`Healed +${v} HP`);
+});
+
+document.getElementById('hitdice-heal-skip').addEventListener('click', () => {
+  document.getElementById('hitdice-heal-modal').hidden = true;
+});
+
+document.getElementById('hitdice-heal-modal').addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('hitdice-heal-modal').hidden = true;
+  if (e.key === 'Enter') document.getElementById('hitdice-heal-confirm').click();
+});
+
+// Add pool modal
+(function initHitDiceModal() {
+  const modal   = document.getElementById('hitdice-modal');
+  const form    = document.getElementById('hitdice-form');
+  const openBtn = document.getElementById('add-hitdice-btn');
+  const cancel  = document.getElementById('hitdice-cancel');
+  const typeIn  = document.getElementById('hitdice-form-type');
+  const totalIn = document.getElementById('hitdice-form-total');
+  const errEl   = document.getElementById('hitdice-form-error');
+
+  const open  = () => { form.reset(); typeIn.value = 'd8'; totalIn.value = 1; errEl.hidden = true; modal.hidden = false; totalIn.focus(); };
+  const close = () => { modal.hidden = true; };
+
+  openBtn.addEventListener('click', open);
+  cancel.addEventListener('click', close);
+  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    errEl.hidden = true;
+    const total = parseInt(totalIn.value, 10) || 0;
+    const c = getSelectedCharacter(); if (!c) return;
+    if (!c.hitDice) c.hitDice = [];
+    const remaining = 20 - hdTotalAll(c);
+    if (total < 1) { errEl.textContent = 'Enter at least 1.'; errEl.hidden = false; return; }
+    if (total > remaining) { errEl.textContent = `Only ${remaining} dice slots left (max 20 total).`; errEl.hidden = false; return; }
+
+    // Stack with existing pool of same type
+    const existing = c.hitDice.find(hd => hd.dieType === typeIn.value);
+    if (existing) {
+      existing.total += total;
+    } else {
+      c.hitDice.push({ id: crypto.randomUUID(), dieType: typeIn.value, total, spent: 0 });
+    }
+    saveState(); renderSession();
+    close();
+    showToast(`Added ${total}${typeIn.value} hit dice`);
+  });
+})();
+
+
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
