@@ -11,7 +11,7 @@ export function setEditMode(val) {
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
-export function showToast(msg, ms = 1800) {
+export function showToast(msg, ms = 2500) {
   const t = document.getElementById('toast');
   if (!t) return;
   t.textContent = msg;

@@ -1,7 +1,6 @@
 // ─── Hit Dice ─────────────────────────────────────────────────────────────────
 // Renders hit dice pools, manages the heal-after-use modal, and wires up
-// the "Add Pool" modal. Imports heal() from hp.js (no circular dep:
-// hp.js does not import from hitdice.js).
+// the "Add Pool" modal.
 
 import { saveState, getSelectedCharacter } from './state.js';
 import { editMode, showToast, makeSwipeable } from './ui.js';

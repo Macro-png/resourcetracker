@@ -1,8 +1,6 @@
 // ─── Inventory ────────────────────────────────────────────────────────────────
 // Coins (with smart spend/change logic), attunement slots, items, and spell
-// components. renderInventory() is called directly from inventory controls
-// (no need for the 'app:rerender' event) because the inventory panel is
-// independent of the stats panel.
+// components. Ingores EP for simplicity.
 
 import { saveState, getSelectedCharacter } from './state.js';
 import { editMode, showToast, makeSwipeable } from './ui.js';
@@ -16,7 +14,7 @@ export function coinsToCP(coins) {
   return COIN_ORDER.reduce((sum, d) => sum + (coins[d] || 0) * COIN_IN_CP[d], 0);
 }
 
-// Spend gpAmount gold from c.coins, handling change without using EP
+// Spend gpAmount gold from c.coins, handling change
 export function spendCoins(c, gpAmount) {
   if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
   return _spendCP(c, Math.round(gpAmount * COIN_IN_CP.gp));
@@ -44,7 +42,7 @@ function _spendCP(c, spendCP) {
         coins[d]--;
         let changeRem = COIN_IN_CP[d] - remaining;
         remaining = 0;
-        // Give change back in GP → SP → CP (never EP)
+        // Give change back in GP → SP → CP
         for (const cd of ['gp', 'sp', 'cp']) {
           const cv   = COIN_IN_CP[cd];
           const give = Math.floor(changeRem / cv);

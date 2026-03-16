@@ -1,7 +1,6 @@
 // ─── HP ───────────────────────────────────────────────────────────────────────
 // Handles HP mutation (damage / heal), death saves, and the concentration
-// check modal. Wires up the HP card and revive button event listeners via
-// initHPControls(), called once from app.js.
+// check modal. Wires up the HP card and revive button event listeners.
 
 import { saveState, getSelectedCharacter } from './state.js';
 import { showToast }                        from './ui.js';
@@ -71,7 +70,7 @@ export function heal(amount) {
   if (!c || amount <= 0) return;
   c.currentHP = Math.min(c.maxHP, c.currentHP + amount);
 
-  // Remove Unconscious and its implied conditions when healed above 0
+  // Remove Unconscious and its implied conditions (except Prone) when healed above 0
   if (c.currentHP > 0 && hasCondition(c, 'Unconscious')) {
     c.statuses = c.statuses.filter(s => s.name !== 'Unconscious');
     const stillImplied = new Set(c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || []));

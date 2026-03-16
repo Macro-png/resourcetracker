@@ -1,10 +1,4 @@
 // ─── Entry Point ──────────────────────────────────────────────────────────────
-// app.js is now a thin bootstrap. All domain logic lives in js/*.
-//
-// Load order matters:
-//   1. Load state from localStorage
-//   2. Wire up all event listeners (PWA, HP, hitdice, inventory, session, modals)
-//   3. Render the initial screen
 
 import { loadState, state }                    from './js/state.js';
 import { initPWA, initExportImport }           from './js/pwa.js';
@@ -25,7 +19,7 @@ initExportImport();
 initHPControls();
 initHitDiceControls();
 initInventoryControls();
-initSessionControls(); // registers the 'app:rerender' listener — must come before modals
+initSessionControls();
 initModals();
 
 // 3. Render initial screen
