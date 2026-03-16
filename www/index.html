@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>D&D Resource Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="pwa/manifest.json" />
+</head>
+<body>
+  <header class="app-header" id="app-header">
+    <h1 class="app-title">Resource Tracker</h1>
+    <div class="app-toolbar">
+      <button id="export-btn" aria-label="Export data">⬇ Export</button>
+      <button id="import-btn" aria-label="Import data">⬆ Import</button>
+      <button id="pwa-install-btn" hidden aria-hidden="true">Install</button>
+    </div>
+  </header>
+
+  <!-- CHARACTER LIST SCREEN -->
+  <div id="character-list-screen" class="screen">
+    <main class="session-content">
+      <ul id="character-list" class="list"></ul>
+    </main>
+    <footer class="screen-footer">
+      <button id="add-character-btn" class="primary-btn" aria-haspopup="dialog">+ Add Character</button>
+    </footer>
+  </div>
+
+  <!-- SESSION SCREEN -->
+  <div id="session-screen" class="screen" hidden>
+
+    <!-- Full-width sticky header -->
+    <div class="session-toprow">
+      <button id="back-btn" class="session-nav-btn">&#8249;</button>
+      <h2 id="character-name" class="character-title"></h2>
+      <button id="edit-btn" class="session-nav-btn">&#9998;</button>
+    </div>
+
+    <!-- Stats Panel -->
+    <div id="stats-panel" class="screen-panel">
+    <main class="session-content">
+
+      <div id="concentration-banner" class="concentration-banner" hidden aria-live="assertive"></div>
+
+      <!-- HP -->
+      <section id="hp-card" class="card hp-card">
+        <button id="edit-character-btn" class="edit-character-btn" hidden>✎ Edit Character</button>
+        <div class="hp-pill">
+          <div class="hp-pill-label">HIT POINTS</div>
+          <div class="hp-pill-numbers" role="status" aria-live="polite">
+            <span id="hp-current">0</span>
+            <span class="slash">/</span>
+            <span id="hp-max">0</span>
+          </div>
+        </div>
+        <div class="hp-bar" aria-hidden="true">
+          <div id="hp-bar-fill" class="hp-bar-fill" style="width:100%"></div>
+        </div>
+        <div class="hp-controls-row">
+          <button id="hp-subtract" class="hp-action-pill damage">DMG</button>
+          <input id="hp-update-amount" type="number" min="0" class="hp-amount-input" aria-label="HP amount" />
+          <button id="hp-add" class="hp-action-pill heal">HEAL</button>
+        </div>
+        <div class="hp-temp-row">
+          <span class="hp-temp-label">Temp HP</span>
+          <input id="hp-temp-inline" type="number" min="0" class="hp-temp-inline-input" placeholder="0" aria-label="Temporary HP" />
+        </div>
+      </section>
+
+      <!-- DEATH SAVES -->
+      <section id="death-saves-card" class="card" hidden>
+        <h3>Death Saves</h3>
+        <div class="death-saves-row">
+          <div class="death-col">
+            <div class="death-saves-label success-label">Successes</div>
+            <div id="death-success-boxes" class="death-boxes"></div>
+          </div>
+          <div class="death-col">
+            <div class="death-saves-label failure-label">Failures</div>
+            <div id="death-failure-boxes" class="death-boxes"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HIT DICE -->
+      <section id="hitdice-section" class="card">
+        <h3>Hit Dice</h3>
+        <div id="hitdice-container"></div>
+        <button id="add-hitdice-btn" class="link-btn" hidden>+ Add Pool</button>
+      </section>
+
+      <!-- SPELL SLOTS -->
+      <section id="spellslots-section" class="card">
+        <h3>Spell Slots</h3>
+        <button id="concentration-toggle" class="concentration-under-btn" aria-pressed="false" aria-label="Toggle concentration" style="width:100%; margin-bottom:0.5rem;">Concentrate</button>
+        <div id="spellslots-container"></div>
+        <button id="add-spellslot-btn" class="link-btn">+ Add Spell Slots</button>
+      </section>
+
+      <!-- RESOURCES -->
+      <section id="resources-section" class="card">
+        <h3>Resources</h3>
+        <div id="resources-container"></div>
+        <button id="add-resource-btn" class="link-btn">+ Add Resources</button>
+      </section>
+
+      <!-- CONDITIONS -->
+      <section id="conditions-section" class="card">
+        <h3>Conditions</h3>
+        <div id="condition-grid" class="condition-grid" aria-label="Standard conditions"></div>
+      </section>
+
+      <!-- REST -->
+      <section id="rest-section" class="row card actions">
+        <button id="short-rest" class="rest-btn primary-btn">Short Rest</button>
+        <button id="long-rest" class="rest-btn primary-btn">Long Rest</button>
+      </section>
+
+      <!-- DEAD -->
+      <div id="dead-card" class="card dead-card" hidden>
+        <div class="dead-skull">&#128128;</div>
+        <div id="dead-name" class="dead-name"></div>
+        <button id="revive-btn" class="hp-action-pill heal">Revive</button>
+      </div>
+
+    </main>
+    </div><!-- /stats-panel -->
+
+    <!-- Inventory Panel -->
+    <div id="inventory-panel" class="screen-panel" hidden>
+      <main class="session-content">
+
+        <!-- COINS -->
+        <section class="card">
+          <h3>Coins</h3>
+          <div class="coins-grid">
+            <div class="coin-box" data-coin="cp">
+              <div class="coin-label">CP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Copper pieces" />
+            </div>
+            <div class="coin-box" data-coin="sp">
+              <div class="coin-label">SP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Silver pieces" />
+            </div>
+            <div class="coin-box" data-coin="ep">
+              <div class="coin-label">EP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Electrum pieces" />
+            </div>
+            <div class="coin-box" data-coin="gp">
+              <div class="coin-label">GP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Gold pieces" />
+            </div>
+            <div class="coin-box" data-coin="pp">
+              <div class="coin-label">PP</div>
+              <input class="coin-input" type="number" min="0" value="0" aria-label="Platinum pieces" />
+            </div>
+          </div>
+          <div class="hp-controls-row">
+            <button id="coin-spend" class="hp-action-pill damage">Spend</button>
+            <input id="coin-amount" type="number" min="0" placeholder="0" class="hp-amount-input" />
+            <select id="coin-denom" class="coin-denom-select-inline">
+              <option value="cp">CP</option>
+              <option value="sp">SP</option>
+              <option value="ep">EP</option>
+              <option value="gp" selected>GP</option>
+              <option value="pp">PP</option>
+            </select>
+            <button id="coin-add" class="hp-action-pill heal">Add</button>
+            <button id="coin-convert" class="coin-convert-btn" aria-label="Convert to highest denomination">⇑</button>
+          </div>
+        </section>
+
+        <!-- ATTUNEMENT -->
+        <section class="card">
+          <h3>Attunement</h3>
+          <div id="attunement-boxes" class="attunement-boxes"></div>
+        </section>
+
+        <!-- ITEMS -->
+        <section class="card">
+          <h3>Items</h3>
+          <div id="items-container"></div>
+          <button id="add-item-btn" class="link-btn" hidden>+ Add Item</button>
+        </section>
+
+        <!-- SPELL COMPONENTS -->
+        <section class="card">
+          <h3>Spell Components</h3>
+          <div id="components-container"></div>
+          <button id="add-component-btn" class="link-btn" hidden>+ Add Component</button>
+        </section>
+
+      </main>
+    </div><!-- /inventory-panel -->
+
+    <!-- Tab Bar -->
+    <div class="session-tab-bar">
+      <button class="tab-btn active" id="tab-stats">Combat</button>
+      <button class="tab-btn" id="tab-inventory">Inventory</button>
+    </div>
+
+  </div>
+
+  <!-- MODALS -->
+  <div id="edit-character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="edit-character-modal-title">
+    <div class="modal-content">
+      <h3 id="edit-character-modal-title">Edit Character</h3>
+      <form id="edit-character-form">
+        <label>Name <input id="edit-character-form-name" name="name" required /></label>
+        <label>Max HP <input id="edit-character-form-maxhp" name="maxhp" type="number" min="1" required /></label>
+        <div id="edit-character-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="edit-character-save">Save</button>
+          <button type="button" id="edit-character-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
+    <div class="modal-content">
+      <h3 id="character-modal-title">Add Character</h3>
+      <form id="character-form">
+        <label>Name <input id="character-form-name" name="name" required /></label>
+        <label>Max HP <input id="character-form-maxhp" name="maxhp" type="number" min="1" required /></label>
+        <label>Full caster level <input id="character-form-fullcaster" name="fullcaster" type="number" min="0" max="20" value="0" /></label>
+        <label>Half caster level (Paladins, Rangers) <input id="character-form-halfcaster" name="halfcaster" type="number" min="0" max="20" value="0" /></label>
+        <label>Pact magic level (Warlocks) <input id="character-form-pactlevel" name="pactlevel" type="number" min="0" max="20" value="0" /></label>
+        <div id="character-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="character-save">Save</button>
+          <button type="button" id="character-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="resource-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="resource-modal-title">
+    <div class="modal-content">
+      <h3 id="resource-modal-title">Add Resource</h3>
+      <form id="resource-form">
+        <label>Name <input id="resource-form-name" name="name" required /></label>
+        <label>Max <input id="resource-form-max" name="max" type="number" min="1" value="1" required /></label>
+        <label>Recovers on
+          <select id="resource-form-recoversOn" name="recoversOn">
+            <option value="none">None</option>
+            <option value="short">Short rest</option>
+            <option value="long">Long rest</option>
+          </select>
+        </label>
+        <div id="resource-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="resource-save">Save</button>
+          <button type="button" id="resource-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="spellslot-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="spellslot-modal-title">
+    <div class="modal-content">
+      <h3 id="spellslot-modal-title">Add Spell Slot</h3>
+      <form id="spellslot-form">
+        <label>Level (1-9) <input id="spellslot-form-level" name="level" type="number" min="1" max="9" value="1" required /></label>
+        <label>Max slots <input id="spellslot-form-max" name="max" type="number" min="0" value="1" required /></label>
+        <label>Recovers on
+          <select id="spellslot-form-recoversOn" name="recoversOn">
+            <option value="none">None</option>
+            <option value="short">Short rest</option>
+            <option value="long" selected>Long rest</option>
+          </select>
+        </label>
+        <div id="spellslot-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="spellslot-save">Save</button>
+          <button type="button" id="spellslot-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="concentration-modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <h3>&#9888;&#65039; Concentration Check!</h3>
+      <p id="concentration-modal-text" style="margin: 1rem 0"></p>
+      <div class="row">
+        <button id="concentration-modal-fail" class="hp-action-pill damage">Fail</button>
+        <button id="concentration-modal-success" class="hp-action-pill heal">Success</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="item-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="item-modal-title">
+    <div class="modal-content">
+      <h3 id="item-modal-title">Add Item</h3>
+      <form id="item-form">
+        <label>Name <input id="item-form-name" name="name" required /></label>
+        <label>Quantity <input id="item-form-qty" name="qty" type="number" min="1" value="1" /></label>
+        <label class="checkbox-label"><input type="checkbox" id="item-form-attuned" /> Requires attunement</label>
+        <div id="item-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="item-save">Save</button>
+          <button type="button" id="item-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="component-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="component-modal-title">
+    <div class="modal-content">
+      <h3 id="component-modal-title">Add Spell Component</h3>
+      <form id="component-form">
+        <label>Name <input id="component-form-name" name="name" required /></label>
+        <label>GP <input id="component-form-gp" name="gp" type="number" min="0" step="0.01" placeholder="e.g. 100" required /></label>
+        <label>Qty (optional) <input id="component-form-qty" name="qty" type="number" min="1" step="1" placeholder="leave blank if no qty" /></label>
+        <div id="component-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="component-save">Save</button>
+          <button type="button" id="component-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="component-edit-modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <h3 id="component-edit-modal-title">Edit Component</h3>
+      <form id="component-edit-form">
+        <div id="component-edit-mode-pool" hidden>
+          <label>GP amount <input id="component-edit-gp" type="number" min="0" step="0.01" /></label>
+        </div>
+        <div id="component-edit-mode-qty" hidden>
+          <label>GP per use <input id="component-edit-price" type="number" min="0" step="0.01" /></label>
+          <label>Quantity <input id="component-edit-qty" type="number" min="0" step="1" /></label>
+        </div>
+        <div id="component-edit-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn">Save</button>
+          <button type="button" id="component-edit-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="hitdice-modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <h3>Add Hit Die Pool</h3>
+      <form id="hitdice-form">
+        <label>Die type
+          <select id="hitdice-form-type">
+            <option value="d6">d6</option>
+            <option value="d8" selected>d8</option>
+            <option value="d10">d10</option>
+            <option value="d12">d12</option>
+          </select>
+        </label>
+        <label>Total dice <input id="hitdice-form-total" type="number" min="1" max="20" value="1" required /></label>
+        <div id="hitdice-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn">Save</button>
+          <button type="button" id="hitdice-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="hitdice-heal-modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <h3 id="hitdice-heal-title">Use Hit Die</h3>
+      <p style="color:var(--muted);font-size:0.9rem;margin:0.5rem 0 0.75rem">How much HP did you recover?</p>
+      <input id="hitdice-heal-amount" type="number" min="0" placeholder="HP healed"
+        style="width:100%;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;text-align:center;font-size:1.4rem;font-weight:900;" />
+      <div class="row" style="margin-top:0.75rem">
+        <button id="hitdice-heal-confirm" class="hp-action-pill heal" style="flex:1">Heal</button>
+        <button id="hitdice-heal-skip" class="link-btn">Skip</button>
+      </div>
+    </div>
+  </div>
+  <template id="resource-template">
+    <div class="spellslot-item card small resource-item">
+      <div class="slot-row">
+        <div class="slot-left"><div class="resource-label" data-key="label"></div></div>
+        <div class="slot-center"><div class="spellslot-controls resource-controls" data-key="controls"></div></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="spellslot-template">
+    <div class="spellslot-item card small">
+      <div class="slot-row">
+        <div class="slot-left"><div class="spellslot-label" data-key="level"></div></div>
+        <div class="slot-center"><div class="spellslot-controls" data-key="controls"></div></div>
+      </div>
+    </div>
+  </template>
+
+  <input id="import-file" type="file" accept="application/json" hidden />
+
+  <div id="toast" class="toast" hidden aria-live="polite"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
