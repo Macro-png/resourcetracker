@@ -1453,3 +1453,27 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   min-width: 88px;
   justify-content: flex-start;
 }
+
+/* ─── KO-FI BUTTON ───────────────────────────────────────────────────────────── */
+
+.kofi-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: transparent;
+  border: 1px solid #444;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  min-height: 36px;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.kofi-btn:hover,
+.kofi-btn:active {
+  border-color: #f9a825;
+  color: #f9a825;
+}
