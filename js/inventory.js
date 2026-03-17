@@ -1,6 +1,8 @@
 // ─── Inventory ────────────────────────────────────────────────────────────────
 // Coins (with smart spend/change logic), attunement slots, items, and spell
-// components. Ingores EP for simplicity.
+// components. renderInventory() is called directly from inventory controls
+// (no need for the 'app:rerender' event) because the inventory panel is
+// independent of the stats panel.
 
 import { saveState, getSelectedCharacter } from './state.js';
 import { editMode, showToast, makeSwipeable } from './ui.js';
@@ -14,7 +16,7 @@ export function coinsToCP(coins) {
   return COIN_ORDER.reduce((sum, d) => sum + (coins[d] || 0) * COIN_IN_CP[d], 0);
 }
 
-// Spend gpAmount gold from c.coins, handling change
+// Spend gpAmount gold from c.coins, handling change without using EP
 export function spendCoins(c, gpAmount) {
   if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
   return _spendCP(c, Math.round(gpAmount * COIN_IN_CP.gp));
@@ -42,7 +44,7 @@ function _spendCP(c, spendCP) {
         coins[d]--;
         let changeRem = COIN_IN_CP[d] - remaining;
         remaining = 0;
-        // Give change back in GP → SP → CP
+        // Give change back in GP → SP → CP (never EP)
         for (const cd of ['gp', 'sp', 'cp']) {
           const cv   = COIN_IN_CP[cd];
           const give = Math.floor(changeRem / cv);
@@ -130,6 +132,16 @@ export function renderInventory(c) {
 
 function renderItemList(c, list, container, onDelete, isComponent = false) {
   container.innerHTML = '';
+
+  if (!list || list.length === 0) {
+    const msg = document.createElement('p');
+    msg.className = 'empty-state';
+    msg.textContent = isComponent
+      ? 'No components — tap ✎ then + Add Component'
+      : 'No items — tap ✎ then + Add Item';
+    container.appendChild(msg);
+    return;
+  }
 
   list.forEach(item => {
     const el = document.createElement('div');

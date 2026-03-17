@@ -5,7 +5,7 @@
 
 export const STORAGE_KEY = 'dndTrackerState';
 
-export let state = { characters: [], selectedCharacterId: null };
+export const state = { characters: [], selectedCharacterId: null, locked: false };
 
 export function getSelectedCharacter() {
   return state.characters.find(c => c.id === state.selectedCharacterId);
@@ -16,6 +16,13 @@ export function saveState() {
 }
 
 export function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) state = JSON.parse(saved);
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(state, parsed);
+    }
+  } catch (e) {
+    console.warn('Failed to load state:', e);
+  }
 }

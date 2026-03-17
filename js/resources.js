@@ -3,13 +3,21 @@
 // (slot-box) UI identical to spell slots; those with max ≥ 4 switch to a
 // counter (−  n/max  +) layout automatically.
 
-import { saveState }               from './state.js';
+import { saveState, state }               from './state.js';
 import { editMode, makeSwipeable } from './ui.js';
 
 export function renderResources(c) {
   const container = document.getElementById('resources-container');
   const template  = document.getElementById('resource-template');
   container.innerHTML = '';
+
+  if (!c.resources || c.resources.length === 0) {
+    const msg = document.createElement('p');
+    msg.className = 'empty-state';
+    msg.textContent = 'No resources — tap ✎ then + Add Resources';
+    container.appendChild(msg);
+    return;
+  }
 
   c.resources.forEach(r => {
     const el = template.content.firstElementChild.cloneNode(true);
@@ -40,6 +48,7 @@ export function renderResources(c) {
         cb.checked = i < (r.max - (r.current || 0));
         cb.setAttribute('aria-label', `${r.name} ${i + 1}`);
         cb.addEventListener('change', () => {
+          if (state.locked) { cb.checked = i < (r.max - (r.current || 0)); return; }
           if (editMode) {
             r.max--;
             r.current = Math.min(r.current || 0, r.max);
@@ -103,6 +112,7 @@ export function renderResources(c) {
       valLabel.style.pointerEvents = 'none';
 
       decLabel.addEventListener('click', () => {
+        if (state.locked) return;
         if (editMode) { if (r.max <= 1) return; r.max--; r.current = Math.min(r.current, r.max); }
         else          { if (r.current <= 0) return; r.current = Math.max(0, r.current - 1); }
         flash(decBox);
@@ -111,6 +121,7 @@ export function renderResources(c) {
       });
 
       incLabel.addEventListener('click', () => {
+        if (state.locked) return;
         if (editMode) { r.max++; r.current = Math.min(r.current, r.max); }
         else          { if (r.current >= r.max) return; r.current = Math.min(r.max, r.current + 1); }
         flash(incBox);

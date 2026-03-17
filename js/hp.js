@@ -1,6 +1,7 @@
 // ─── HP ───────────────────────────────────────────────────────────────────────
 // Handles HP mutation (damage / heal), death saves, and the concentration
-// check modal. Wires up the HP card and revive button event listeners.
+// check modal. Wires up the HP card and revive button event listeners via
+// initHPControls(), called once from app.js.
 
 import { saveState, getSelectedCharacter } from './state.js';
 import { showToast }                        from './ui.js';
@@ -10,6 +11,11 @@ import {
   STICKY_IMPLIED,
   getConcentration,
 } from './conditions.js';
+
+// Returns the effective max HP accounting for temp max reduction
+export function effectiveMaxHP(c) {
+  return Math.max(1, c.maxHP - (c.maxHPReduction || 0));
+}
 
 // ─── Core HP logic ───────────────────────────────────────────────────────────
 
@@ -28,9 +34,10 @@ export function applyDamage(amount) {
 
   const hpBefore  = c.currentHP;
   c.currentHP     = Math.max(0, c.currentHP - amount);
+  const effMax    = effectiveMaxHP(c);
 
   // Instant death (massive damage rule)
-  if (c.currentHP === 0 && amount >= hpBefore + c.maxHP) {
+  if (c.currentHP === 0 && amount >= hpBefore + effMax) {
     c.dead = true;
     c.deathSaves = { success: 0, failure: 0 };
     delete c.concentration;
@@ -68,9 +75,9 @@ export function applyDamage(amount) {
 export function heal(amount) {
   const c = getSelectedCharacter();
   if (!c || amount <= 0) return;
-  c.currentHP = Math.min(c.maxHP, c.currentHP + amount);
+  c.currentHP = Math.min(effectiveMaxHP(c), c.currentHP + amount);
 
-  // Remove Unconscious and its implied conditions (except Prone) when healed above 0
+  // Remove Unconscious and its implied conditions when healed above 0
   if (c.currentHP > 0 && hasCondition(c, 'Unconscious')) {
     c.statuses = c.statuses.filter(s => s.name !== 'Unconscious');
     const stillImplied = new Set(c.statuses.flatMap(s => IMPLIED_CONDITIONS[s.name] || []));
@@ -159,6 +166,18 @@ export function initHPControls() {
     document.dispatchEvent(new CustomEvent('app:rerender'));
   });
   temp.addEventListener('keydown', e => { if (e.key === 'Enter') temp.blur(); });
+
+  const maxReductionInput = document.getElementById('hp-max-reduction');
+  maxReductionInput.addEventListener('change', () => {
+    const c = getSelectedCharacter();
+    if (!c) return;
+    c.maxHPReduction = Math.max(0, parseInt(maxReductionInput.value, 10) || 0);
+    // Clamp currentHP to new effective max
+    c.currentHP = Math.min(c.currentHP, effectiveMaxHP(c));
+    saveState();
+    document.dispatchEvent(new CustomEvent('app:rerender'));
+  });
+  maxReductionInput.addEventListener('keydown', e => { if (e.key === 'Enter') maxReductionInput.blur(); });
 
   // Revive button (dead card)
   document.getElementById('revive-btn').addEventListener('click', () => {

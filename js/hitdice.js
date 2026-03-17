@@ -1,6 +1,7 @@
 // ─── Hit Dice ─────────────────────────────────────────────────────────────────
 // Renders hit dice pools, manages the heal-after-use modal, and wires up
-// the "Add Pool" modal.
+// the "Add Pool" modal. Imports heal() from hp.js (no circular dep:
+// hp.js does not import from hitdice.js).
 
 import { saveState, getSelectedCharacter } from './state.js';
 import { editMode, showToast, makeSwipeable } from './ui.js';
@@ -35,6 +36,14 @@ export function renderHitDice(c) {
 
   const container = document.getElementById('hitdice-container');
   container.innerHTML = '';
+
+  if (c.hitDice.length === 0) {
+    const msg = document.createElement('p');
+    msg.className = 'empty-state';
+    msg.textContent = 'No hit dice — tap ✎ then + Add Pool';
+    container.appendChild(msg);
+    return;
+  }
 
   c.hitDice.forEach(hd => {
     const el = document.createElement('div');
@@ -77,16 +86,8 @@ export function renderHitDice(c) {
           saveState();
           document.dispatchEvent(new CustomEvent('app:rerender'));
         } else {
-          if (cb.checked) {
-            hd.spent = i + 1; // fill left up to this box
-            saveState();
-            document.dispatchEvent(new CustomEvent('app:rerender'));
-            openHitDiceHealModal(c, hd);
-          } else {
-            hd.spent = i; // uncheck from here rightward
-            saveState();
-            document.dispatchEvent(new CustomEvent('app:rerender'));
-          }
+          // Outside edit mode checkboxes are read-only — restore previous state
+          cb.checked = i < hd.spent;
         }
       });
 
@@ -129,37 +130,73 @@ export function renderHitDice(c) {
   });
 }
 
-// ─── Heal modal ───────────────────────────────────────────────────────────────
+// ─── Short rest hit dice flow (called from session.js shortRest) ─────────────
 
-let _hdHealChar = null;
+export function promptHitDiceUse(c, onDone) {
+  const modal     = document.getElementById('hitdice-use-modal');
+  const dieSelect = document.getElementById('hitdice-use-type');
+  const dieCount  = document.getElementById('hitdice-use-count');
+  const healInput = document.getElementById('hitdice-use-healed');
+  const errEl     = document.getElementById('hitdice-use-error');
+  const confirmBtn = document.getElementById('hitdice-use-confirm');
+  const skipBtn   = document.getElementById('hitdice-use-skip');
 
-function openHitDiceHealModal(c, hd) {
-  _hdHealChar = c;
-  document.getElementById('hitdice-heal-title').textContent = `Use ${hd.dieType}`;
-  document.getElementById('hitdice-heal-amount').value = '';
-  document.getElementById('hitdice-heal-modal').hidden = false;
-  setTimeout(() => document.getElementById('hitdice-heal-amount').focus(), 50);
+  // Populate die type options from available pools
+  dieSelect.innerHTML = '';
+  const available = (c.hitDice || []).filter(hd => hd.spent < hd.total);
+  if (available.length === 0) {
+    onDone(0);
+    return;
+  }
+  available.forEach(hd => {
+    const opt = document.createElement('option');
+    opt.value = hd.dieType;
+    opt.textContent = `${hd.dieType} (${hd.total - hd.spent} left)`;
+    dieSelect.appendChild(opt);
+  });
+
+  dieCount.value  = 1;
+  healInput.value = '';
+  errEl.hidden    = true;
+  modal.hidden    = false;
+  dieCount.focus();
+
+  const close = () => { modal.hidden = true; };
+
+  const onConfirm = () => {
+    const dieType = dieSelect.value;
+    const count   = parseInt(dieCount.value, 10) || 0;
+    const healed  = parseInt(healInput.value, 10) || 0;
+    const pool    = c.hitDice.find(hd => hd.dieType === dieType);
+    if (!pool) return;
+    const available = pool.total - pool.spent;
+    if (count < 1 || count > available) {
+      errEl.textContent = `You only have ${available} ${dieType} available.`;
+      errEl.hidden = false; return;
+    }
+    pool.spent += count;
+    saveState();
+    close();
+    onDone(healed);
+  };
+
+  // Clean up old listeners by cloning
+  const newConfirm = confirmBtn.cloneNode(true);
+  const newSkip    = skipBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+  skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+
+  newConfirm.addEventListener('click', onConfirm);
+  newSkip.addEventListener('click', () => { close(); onDone(0); });
+  modal.addEventListener('keydown', function handler(e) {
+    if (e.key === 'Escape') { close(); onDone(0); modal.removeEventListener('keydown', handler); }
+    if (e.key === 'Enter')  { onConfirm(); }
+  });
 }
 
 // ─── Event listener wiring ───────────────────────────────────────────────────
 
 export function initHitDiceControls() {
-  // Heal modal
-  document.getElementById('hitdice-heal-confirm').addEventListener('click', () => {
-    const v = parseInt(document.getElementById('hitdice-heal-amount').value, 10) || 0;
-    if (v > 0 && _hdHealChar) heal(v);
-    document.getElementById('hitdice-heal-modal').hidden = true;
-    if (v > 0) showToast(`Healed +${v} HP`);
-  });
-
-  document.getElementById('hitdice-heal-skip').addEventListener('click', () => {
-    document.getElementById('hitdice-heal-modal').hidden = true;
-  });
-
-  document.getElementById('hitdice-heal-modal').addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('hitdice-heal-modal').hidden = true;
-    if (e.key === 'Enter')  document.getElementById('hitdice-heal-confirm').click();
-  });
 
   // Add pool modal
   const modal   = document.getElementById('hitdice-modal');

@@ -7,12 +7,12 @@
   <title>D&D Resource Tracker</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="pwa/manifest.json" />
-  <link rel="shortcut icon" type="image/x-icon" href="assets/Logo App DND Tiny.png">
 </head>
 <body>
   <header class="app-header" id="app-header">
     <h1 class="app-title">Resource Tracker</h1>
     <div class="app-toolbar">
+      <button id="lock-btn" aria-label="Lock app">🔓 Lock</button>
       <button id="export-btn" aria-label="Export data">⬇ Export</button>
       <button id="import-btn" aria-label="Import data">⬆ Import</button>
       <button id="pwa-install-btn" hidden aria-hidden="true">Install</button>
@@ -32,14 +32,20 @@
   <!-- SESSION SCREEN -->
   <div id="session-screen" class="screen" hidden>
 
-    <!-- HEADER -->
+    <!-- Full-width sticky header -->
     <div class="session-toprow">
       <button id="back-btn" class="session-nav-btn">&#8249;</button>
       <h2 id="character-name" class="character-title"></h2>
       <button id="edit-btn" class="session-nav-btn">&#9998;</button>
     </div>
 
-    <!-- COMBAT PANEL -->
+    <!-- Tab bar -->
+    <div class="session-tab-bar">
+      <button id="tab-stats" class="tab-btn active">Stats</button>
+      <button id="tab-inventory" class="tab-btn">Inventory</button>
+    </div>
+
+    <!-- Stats Panel -->
     <div id="stats-panel" class="screen-panel">
     <main class="session-content">
 
@@ -48,6 +54,7 @@
       <!-- HP -->
       <section id="hp-card" class="card hp-card">
         <button id="edit-character-btn" class="edit-character-btn" hidden>✎ Edit Character</button>
+        <button id="levelup-btn" class="edit-character-btn levelup-btn" hidden>⬆ Level Up</button>
         <div class="hp-pill">
           <div class="hp-pill-label">HIT POINTS</div>
           <div class="hp-pill-numbers" role="status" aria-live="polite">
@@ -58,6 +65,7 @@
         </div>
         <div class="hp-bar" aria-hidden="true">
           <div id="hp-bar-fill" class="hp-bar-fill" style="width:100%"></div>
+          <div id="hp-bar-lost" class="hp-bar-lost" style="display:none"></div>
         </div>
         <div class="hp-controls-row">
           <button id="hp-subtract" class="hp-action-pill damage">DMG</button>
@@ -67,6 +75,10 @@
         <div class="hp-temp-row">
           <span class="hp-temp-label">Temp HP</span>
           <input id="hp-temp-inline" type="number" min="0" class="hp-temp-inline-input" placeholder="0" aria-label="Temporary HP" />
+        </div>
+        <div class="hp-temp-row" id="hp-reduction-row" style="display:none">
+          <span class="hp-temp-label" style="color:#f97316">Max −</span>
+          <input id="hp-max-reduction" type="number" min="0" class="hp-temp-inline-input" placeholder="0" aria-label="Max HP reduction" style="border-color:#f97316" />
         </div>
       </section>
 
@@ -97,14 +109,14 @@
         <h3>Spell Slots</h3>
         <button id="concentration-toggle" class="concentration-under-btn" aria-pressed="false" aria-label="Toggle concentration" style="width:100%; margin-bottom:0.5rem;">Concentrate</button>
         <div id="spellslots-container"></div>
-        <button id="add-spellslot-btn" class="link-btn">+ Add Spell Slots</button>
+        <button id="add-spellslot-btn" class="link-btn" hidden>+ Add Spell Slots</button>
       </section>
 
       <!-- RESOURCES -->
       <section id="resources-section" class="card">
         <h3>Resources</h3>
         <div id="resources-container"></div>
-        <button id="add-resource-btn" class="link-btn">+ Add Resources</button>
+        <button id="add-resource-btn" class="link-btn" hidden>+ Add Resources</button>
       </section>
 
       <!-- CONDITIONS -->
@@ -127,10 +139,9 @@
       </div>
 
     </main>
-    </div>
-    <!-- /COMBAT PANEL -->
+    </div><!-- /stats-panel -->
 
-    <!-- INVENTORY PANEL -->
+    <!-- Inventory Panel -->
     <div id="inventory-panel" class="screen-panel" hidden>
       <main class="session-content">
 
@@ -177,7 +188,7 @@
         <!-- ATTUNEMENT -->
         <section class="card">
           <h3>Attunement</h3>
-          <div id="attunement-boxes" class="attunement-boxes"></div>
+          <div id="attunement-boxes" class="spellslot-controls"></div>
         </section>
 
         <!-- ITEMS -->
@@ -195,18 +206,32 @@
         </section>
 
       </main>
-    </div>
-    <!-- /INVENTORY PANEL -->
+    </div><!-- /inventory-panel -->
 
-    <!-- TAB BAR -->
-    <div class="session-tab-bar">
-      <button class="tab-btn active" id="tab-stats">Combat</button>
-      <button class="tab-btn" id="tab-inventory">Inventory</button>
-    </div>
+  </div><!-- /session-screen -->
 
+  <!-- ── MODALS ─────────────────────────────────────────────────────────── -->
+
+  <!-- Add Character -->
+  <div id="character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
+    <div class="modal-content">
+      <h3 id="character-modal-title">Add Character</h3>
+      <form id="character-form">
+        <label>Name <input id="character-form-name" name="name" required /></label>
+        <label>Max HP <input id="character-form-maxhp" name="maxhp" type="number" min="1" value="10" required /></label>
+        <label>Full Caster Level (0–20) <input id="character-form-fullcaster" name="fullcaster" type="number" min="0" max="20" value="0" /></label>
+        <label>Half Caster Level (0–20) <input id="character-form-halfcaster" name="halfcaster" type="number" min="0" max="20" value="0" /></label>
+        <label>Pact Magic Level (0–20) <input id="character-form-pactlevel" name="pactlevel" type="number" min="0" max="20" value="0" /></label>
+        <div id="character-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="character-save">Save</button>
+          <button type="button" id="character-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <!-- MODALS -->
+  <!-- Edit Character -->
   <div id="edit-character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="edit-character-modal-title">
     <div class="modal-content">
       <h3 id="edit-character-modal-title">Edit Character</h3>
@@ -217,24 +242,6 @@
         <div class="row">
           <button type="submit" class="primary-btn" id="edit-character-save">Save</button>
           <button type="button" id="edit-character-cancel" class="link-btn">Cancel</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
-    <div class="modal-content">
-      <h3 id="character-modal-title">Add Character</h3>
-      <form id="character-form">
-        <label>Name <input id="character-form-name" name="name" required /></label>
-        <label>Max HP <input id="character-form-maxhp" name="maxhp" type="number" min="1" required /></label>
-        <label>Full caster level <input id="character-form-fullcaster" name="fullcaster" type="number" min="0" max="20" value="0" /></label>
-        <label>Half caster level (Paladins, Rangers) <input id="character-form-halfcaster" name="halfcaster" type="number" min="0" max="20" value="0" /></label>
-        <label>Pact magic level (Warlocks) <input id="character-form-pactlevel" name="pactlevel" type="number" min="0" max="20" value="0" /></label>
-        <div id="character-form-error" class="form-error" hidden></div>
-        <div class="row">
-          <button type="submit" class="primary-btn" id="character-save">Save</button>
-          <button type="button" id="character-cancel" class="link-btn">Cancel</button>
         </div>
       </form>
     </div>
@@ -369,18 +376,27 @@
     </div>
   </div>
 
-  <div id="hitdice-heal-modal" class="modal" hidden role="dialog" aria-modal="true">
+  <div id="hitdice-use-modal" class="modal" hidden role="dialog" aria-modal="true">
     <div class="modal-content">
-      <h3 id="hitdice-heal-title">Use Hit Die</h3>
-      <p style="color:var(--muted);font-size:0.9rem;margin:0.5rem 0 0.75rem">How much HP did you recover?</p>
-      <input id="hitdice-heal-amount" type="number" min="0" placeholder="HP healed"
-        style="width:100%;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;text-align:center;font-size:1.4rem;font-weight:900;" />
+      <h3>Use Hit Dice</h3>
+      <p style="color:var(--muted);font-size:0.9rem;margin:0 0 0.75rem">Roll your hit dice and enter how much HP you recover.</p>
+      <label>Die type
+        <select id="hitdice-use-type" style="width:100%;margin-top:0.3rem;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;"></select>
+      </label>
+      <label style="margin-top:0.5rem;display:block">Number of dice
+        <input id="hitdice-use-count" type="number" min="1" value="1" style="width:100%;margin-top:0.3rem;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;text-align:center;font-size:1.2rem;font-weight:800;" />
+      </label>
+      <label style="margin-top:0.5rem;display:block">HP recovered (enter 0 to skip healing)
+        <input id="hitdice-use-healed" type="number" min="0" placeholder="0" style="width:100%;margin-top:0.3rem;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;text-align:center;font-size:1.4rem;font-weight:900;" />
+      </label>
+      <div id="hitdice-use-error" class="form-error" hidden></div>
       <div class="row" style="margin-top:0.75rem">
-        <button id="hitdice-heal-confirm" class="hp-action-pill heal" style="flex:1">Heal</button>
-        <button id="hitdice-heal-skip" class="link-btn">Skip</button>
+        <button id="hitdice-use-confirm" class="hp-action-pill heal" style="flex:1">Use Dice</button>
+        <button id="hitdice-use-skip" class="link-btn">Skip</button>
       </div>
     </div>
   </div>
+
   <template id="resource-template">
     <div class="spellslot-item card small resource-item">
       <div class="slot-row">
@@ -398,6 +414,28 @@
       </div>
     </div>
   </template>
+
+  <div id="levelup-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="levelup-modal-title">
+    <div class="modal-content">
+      <h3 id="levelup-modal-title">⬆ Level Up</h3>
+      <form id="levelup-form">
+        <label>New Max HP <input id="levelup-maxhp" type="number" min="1" required /></label>
+        <label>Class type for new level
+          <select id="levelup-caster">
+            <option value="none">Non-caster</option>
+            <option value="full">Full caster (Wizard, Cleric…)</option>
+            <option value="half">Half caster (Paladin, Ranger…)</option>
+            <option value="pact">Pact magic (Warlock)</option>
+          </select>
+        </label>
+        <div id="levelup-form-error" class="form-error" hidden></div>
+        <div class="row">
+          <button type="submit" class="primary-btn" id="levelup-save">Level Up</button>
+          <button type="button" id="levelup-cancel" class="link-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <input id="import-file" type="file" accept="application/json" hidden />
 

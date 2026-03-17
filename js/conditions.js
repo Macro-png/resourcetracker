@@ -1,6 +1,7 @@
 // ─── Conditions ──────────────────────────────────────────────────────────────
 // Handles standard conditions, implied conditions, concentration, and
-// exhaustion.
+// exhaustion. Does not import from hp.js or session.js — uses the custom
+// 'app:rerender' event to trigger a session re-render after state changes.
 
 import { saveState } from './state.js';
 import { showToast }  from './ui.js';

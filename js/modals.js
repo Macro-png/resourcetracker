@@ -18,6 +18,7 @@ export function initModals() {
   _initEditCharacterModal();
   _initResourceModal();
   _initSpellSlotModal();
+  _initLevelUpModal();
 }
 
 // ─── Add Character ────────────────────────────────────────────────────────────
@@ -204,4 +205,136 @@ function _initSpellSlotModal() {
     saveState(); renderSession(); close(); form.reset();
     showToast(`Added level ${level} spell slots`);
   });
+}
+
+// ─── Level Up ─────────────────────────────────────────────────────────────────
+
+function _initLevelUpModal() {
+  const modal    = document.getElementById('levelup-modal');
+  const form     = document.getElementById('levelup-form');
+  const openBtn  = document.getElementById('levelup-btn');
+  const cancel   = document.getElementById('levelup-cancel');
+  const maxHPIn  = document.getElementById('levelup-maxhp');
+  const casterIn = document.getElementById('levelup-caster');
+  const errEl    = document.getElementById('levelup-form-error');
+
+  const open = () => {
+    const c = getSelectedCharacter(); if (!c) return;
+    maxHPIn.value  = c.maxHP;
+    casterIn.value = 'none';
+    errEl.hidden   = true;
+    modal.hidden   = false;
+    maxHPIn.focus();
+  };
+  const close = () => { modal.hidden = true; };
+
+  openBtn.addEventListener('click', open);
+  cancel.addEventListener('click', close);
+  modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    errEl.hidden = true;
+    const c = getSelectedCharacter(); if (!c) return;
+
+    const newMax = parseInt(maxHPIn.value, 10);
+    if (!Number.isInteger(newMax) || newMax < 1) {
+      errEl.textContent = 'Max HP must be a positive number.';
+      errEl.hidden = false; return;
+    }
+
+    const hpGain  = newMax - c.maxHP;
+    c.maxHP       = newMax;
+    if (hpGain > 0) c.currentHP = Math.min(c.maxHP, c.currentHP + hpGain);
+    c.currentHP   = Math.min(c.currentHP, c.maxHP);
+
+    // Grant new spell slots based on caster type
+    const casterType = casterIn.value;
+    if (casterType !== 'none') {
+      // Count existing levels of this type from current slots
+      // We grant one level's worth of new slots as a diff
+      _grantLevelUpSlots(c, casterType);
+    }
+
+    saveState();
+    renderSession();
+    close();
+    showToast(`${c.name} levelled up!`);
+  });
+}
+
+function _grantLevelUpSlots(c, casterType) {
+  // We track caster levels per type on the character object
+  if (!c.casterLevels) c.casterLevels = { full: 0, half: 0, pact: 0 };
+
+  const prev = { ...c.casterLevels };
+  c.casterLevels[casterType] = (c.casterLevels[casterType] || 0) + 1;
+
+  // Clamp total to 20
+  const total = c.casterLevels.full + c.casterLevels.half + c.casterLevels.pact;
+  if (total > 20) { c.casterLevels[casterType]--; return; }
+
+  // Compute old slots and new slots, add the difference
+  const oldSlots = _computeSlots(prev.full, prev.half, prev.pact);
+  const newSlots = _computeSlots(c.casterLevels.full, c.casterLevels.half, c.casterLevels.pact);
+
+  // For each level, if new > old, push the difference as new slot entries
+  newSlots.forEach(ns => {
+    const os = oldSlots.find(s => s.level === ns.level && s.pact === ns.pact);
+    const oldMax = os ? os.max : 0;
+    const diff   = ns.max - oldMax;
+    if (diff <= 0) return;
+    const existing = c.spellSlots.find(s => s.level === ns.level && !!s.pact === ns.pact);
+    if (existing) existing.max += diff;
+    else c.spellSlots.push({
+      id: crypto.randomUUID(), level: ns.level,
+      max: diff, used: 0,
+      recoversOn: ns.pact ? 'short' : 'long',
+      pact: ns.pact,
+    });
+  });
+}
+
+function _computeSlots(full, half, pact) {
+  // Inline the slot math here to avoid circular imports
+  full = Math.max(0, full || 0);
+  half = Math.max(0, half || 0);
+  pact = Math.max(0, pact || 0);
+
+  const fullTable = {
+    0:[0,0,0,0,0,0,0,0,0],
+    1:[2,0,0,0,0,0,0,0,0],2:[3,0,0,0,0,0,0,0,0],3:[4,2,0,0,0,0,0,0,0],
+    4:[4,3,0,0,0,0,0,0,0],5:[4,3,2,0,0,0,0,0,0],6:[4,3,3,0,0,0,0,0,0],
+    7:[4,3,3,1,0,0,0,0,0],8:[4,3,3,2,0,0,0,0,0],9:[4,3,3,3,1,0,0,0,0],
+    10:[4,3,3,3,2,0,0,0,0],11:[4,3,3,3,2,1,0,0,0],12:[4,3,3,3,2,1,0,0,0],
+    13:[4,3,3,3,2,1,1,0,0],14:[4,3,3,3,2,1,1,0,0],15:[4,3,3,3,2,1,1,1,0],
+    16:[4,3,3,3,2,1,1,1,0],17:[4,3,3,3,2,1,1,1,1],18:[4,3,3,3,3,1,1,1,1],
+    19:[4,3,3,3,3,2,1,1,1],20:[4,3,3,3,3,2,2,1,1],
+  };
+  const halfTable = {
+    0:[0,0,0,0,0,0,0,0,0],
+    1:[0,0,0,0,0,0,0,0,0],2:[2,0,0,0,0,0,0,0,0],3:[3,0,0,0,0,0,0,0,0],
+    4:[3,0,0,0,0,0,0,0,0],5:[4,2,0,0,0,0,0,0,0],6:[4,2,0,0,0,0,0,0,0],
+    7:[4,3,0,0,0,0,0,0,0],8:[4,3,0,0,0,0,0,0,0],9:[4,3,2,0,0,0,0,0,0],
+    10:[4,3,2,0,0,0,0,0,0],11:[4,3,3,0,0,0,0,0,0],12:[4,3,3,0,0,0,0,0,0],
+    13:[4,3,3,1,0,0,0,0,0],14:[4,3,3,1,0,0,0,0,0],15:[4,3,3,2,0,0,0,0,0],
+    16:[4,3,3,2,0,0,0,0,0],17:[4,3,3,3,1,0,0,0,0],18:[4,3,3,3,1,0,0,0,0],
+    19:[4,3,3,3,2,0,0,0,0],20:[4,3,3,3,2,0,0,0,0],
+  };
+
+  const eff = Math.min(20, Math.floor(full + 0.5 * half));
+  const perLevel = (full === 0 && half > 0) ? halfTable[Math.min(20, half)] : fullTable[Math.min(20, eff)];
+  const out = [];
+  perLevel.forEach((count, idx) => {
+    if (count > 0) out.push({ level: idx + 1, max: count, pact: false });
+  });
+
+  if (pact > 0) {
+    out.push({
+      level: Math.min(Math.ceil(pact / 2), 5),
+      max: pact === 1 ? 1 : 2,
+      pact: true,
+    });
+  }
+  return out;
 }

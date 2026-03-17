@@ -2,7 +2,7 @@
 // Renders the spell slot section and owns all caster-level math
 // (full caster, half caster, pact magic multiclass merging).
 
-import { saveState }          from './state.js';
+import { saveState, state }     from './state.js';
 import { editMode, makeSwipeable } from './ui.js';
 
 // ─── Slot tables ─────────────────────────────────────────────────────────────
@@ -90,6 +90,14 @@ export function renderSpellSlots(c) {
   const template  = document.getElementById('spellslot-template');
   container.innerHTML = '';
 
+  if (!c.spellSlots || c.spellSlots.length === 0) {
+    const msg = document.createElement('p');
+    msg.className = 'empty-state';
+    msg.textContent = 'No spell slots — tap ✎ then + Add Spell Slots';
+    container.appendChild(msg);
+    return;
+  }
+
   // Keep pact flag in sync with recoversOn
   if (Array.isArray(c.spellSlots)) {
     let changed = false;
@@ -135,6 +143,7 @@ export function renderSpellSlots(c) {
       cb.checked = (s.used || 0) > i;
       cb.setAttribute('aria-label', title);
       cb.addEventListener('change', () => {
+        if (state.locked) { cb.checked = (s.used || 0) > i; return; }
         if (editMode) {
           if (s.max > 0) {
             s.max--;
