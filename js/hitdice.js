@@ -1,19 +1,14 @@
 // ─── Hit Dice ─────────────────────────────────────────────────────────────────
-// Renders hit dice pools, manages the heal-after-use modal, and wires up
-// the "Add Pool" modal. Imports heal() from hp.js (no circular dep:
-// hp.js does not import from hitdice.js).
 
 import { saveState, getSelectedCharacter } from './state.js';
 import { editMode, showToast, makeSwipeable } from './ui.js';
-import { heal } from './hp.js';
 
-export const HD_SIZES = ['d12', 'd10', 'd8', 'd6']; // largest first for recovery priority
+export const HD_SIZES = ['d12', 'd10', 'd8', 'd6'];
 
 export function hdTotalAll(c) {
   return (c.hitDice || []).reduce((sum, hd) => sum + hd.total, 0);
 }
 
-// Collapse duplicate die-type pools into one row (can accumulate via Add Pool)
 export function mergeHitDicePools(c) {
   if (!c.hitDice) return;
   const merged = {};
@@ -28,7 +23,7 @@ export function mergeHitDicePools(c) {
     .concat(Object.values(merged).filter(hd => !HD_SIZES.includes(hd.dieType)));
 }
 
-// ─── Render ──────────────────────────────────────────────────────────────────
+// ─── Render ───────────────────────────────────────────────────────────────────
 
 export function renderHitDice(c) {
   if (!c.hitDice) c.hitDice = [];
@@ -40,7 +35,7 @@ export function renderHitDice(c) {
   if (c.hitDice.length === 0) {
     const msg = document.createElement('p');
     msg.className = 'empty-state';
-    msg.textContent = 'No hit dice — tap ✎ then + Add Pool';
+    msg.textContent = 'No hit dice — tap + Add Pool';
     container.appendChild(msg);
     return;
   }
@@ -52,7 +47,6 @@ export function renderHitDice(c) {
     const slotRow = document.createElement('div');
     slotRow.className = 'slot-row';
 
-    // Left: die-type label
     const slotLeft = document.createElement('div');
     slotLeft.className = 'slot-left';
     const labelEl = document.createElement('div');
@@ -61,7 +55,6 @@ export function renderHitDice(c) {
     slotLeft.appendChild(labelEl);
     slotRow.appendChild(slotLeft);
 
-    // Center: one checkbox per die (checked = spent, fills from left)
     const slotCenter = document.createElement('div');
     slotCenter.className = 'slot-center';
     const controls = document.createElement('div');
@@ -70,27 +63,23 @@ export function renderHitDice(c) {
     for (let i = 0; i < hd.total; i++) {
       const lbl = document.createElement('label');
       lbl.className = 'slot-toggle';
-
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'slot-checkbox';
       cb.checked = i < hd.spent;
       cb.setAttribute('aria-label', `${hd.dieType} die ${i + 1}`);
-
       cb.addEventListener('change', () => {
+        if (c.locked) { cb.checked = i < hd.spent; return; }
         if (editMode) {
-          // Tapping a box in edit mode removes one die from the pool
           hd.total--;
           hd.spent = Math.min(hd.spent, hd.total);
           if (hd.total === 0) c.hitDice = c.hitDice.filter(x => x.id !== hd.id);
           saveState();
           document.dispatchEvent(new CustomEvent('app:rerender'));
         } else {
-          // Outside edit mode checkboxes are read-only — restore previous state
           cb.checked = i < hd.spent;
         }
       });
-
       const box = document.createElement('span');
       box.className = 'slot-box hitdice-box';
       lbl.appendChild(cb);
@@ -98,7 +87,6 @@ export function renderHitDice(c) {
       controls.appendChild(lbl);
     }
 
-    // + add box (edit mode, max 20 total)
     if (hd.total < 20 && hdTotalAll(c) < 20) {
       const addLbl = document.createElement('label');
       addLbl.className = 'slot-toggle slot-add-toggle';
@@ -130,57 +118,110 @@ export function renderHitDice(c) {
   });
 }
 
-// ─── Short rest hit dice flow (called from session.js shortRest) ─────────────
+// ─── Short rest: counter per die size ─────────────────────────────────────────
 
 export function promptHitDiceUse(c, onDone) {
-  const modal     = document.getElementById('hitdice-use-modal');
-  const dieSelect = document.getElementById('hitdice-use-type');
-  const dieCount  = document.getElementById('hitdice-use-count');
-  const healInput = document.getElementById('hitdice-use-healed');
-  const errEl     = document.getElementById('hitdice-use-error');
+  const modal      = document.getElementById('hitdice-use-modal');
+  const countersEl = document.getElementById('hitdice-use-counters');
+  const healInput  = document.getElementById('hitdice-use-healed');
+  const errEl      = document.getElementById('hitdice-use-error');
   const confirmBtn = document.getElementById('hitdice-use-confirm');
-  const skipBtn   = document.getElementById('hitdice-use-skip');
+  const skipBtn    = document.getElementById('hitdice-use-skip');
 
-  // Populate die type options from available pools
-  dieSelect.innerHTML = '';
   const available = (c.hitDice || []).filter(hd => hd.spent < hd.total);
-  if (available.length === 0) {
-    onDone(0);
-    return;
-  }
+  if (available.length === 0) { onDone(0); return; }
+
+  countersEl.innerHTML = '';
+  const selections = {};
+
   available.forEach(hd => {
-    const opt = document.createElement('option');
-    opt.value = hd.dieType;
-    opt.textContent = `${hd.dieType} (${hd.total - hd.spent} left)`;
-    dieSelect.appendChild(opt);
+    const avail = hd.total - hd.spent;
+    selections[hd.dieType] = { count: 0, max: avail, countEl: null };
+
+    const row = document.createElement('div');
+    row.className = 'hd-counter-row';
+
+    const left = document.createElement('div');
+    left.className = 'hd-counter-left';
+
+    const label = document.createElement('span');
+    label.className = 'hd-counter-label';
+    label.textContent = hd.dieType;
+
+    const availEl = document.createElement('span');
+    availEl.className = 'hd-counter-avail';
+    availEl.textContent = `${avail} left`;
+
+    left.appendChild(label);
+    left.appendChild(availEl);
+
+    const right = document.createElement('div');
+    right.className = 'hd-counter-controls';
+
+    const dec = document.createElement('button');
+    dec.type = 'button';
+    dec.className = 'hd-counter-btn';
+    dec.textContent = '−';
+
+    const countEl = document.createElement('span');
+    countEl.className = 'hd-counter-val';
+    countEl.textContent = '0';
+    selections[hd.dieType].countEl = countEl;
+
+    const inc = document.createElement('button');
+    inc.type = 'button';
+    inc.className = 'hd-counter-btn';
+    inc.textContent = '+';
+
+    dec.addEventListener('click', () => {
+      const s = selections[hd.dieType];
+      if (s.count <= 0) return;
+      s.count--;
+      countEl.textContent = s.count;
+    });
+
+    inc.addEventListener('click', () => {
+      const s = selections[hd.dieType];
+      if (s.count >= s.max) return;
+      s.count++;
+      countEl.textContent = s.count;
+    });
+
+    right.appendChild(dec);
+    right.appendChild(countEl);
+    right.appendChild(inc);
+    row.appendChild(left);
+    row.appendChild(right);
+    countersEl.appendChild(row);
   });
 
-  dieCount.value  = 1;
   healInput.value = '';
   errEl.hidden    = true;
   modal.hidden    = false;
-  dieCount.focus();
+  setTimeout(() => healInput.focus(), 50);
 
   const close = () => { modal.hidden = true; };
 
   const onConfirm = () => {
-    const dieType = dieSelect.value;
-    const count   = parseInt(dieCount.value, 10) || 0;
-    const healed  = parseInt(healInput.value, 10) || 0;
-    const pool    = c.hitDice.find(hd => hd.dieType === dieType);
-    if (!pool) return;
-    const available = pool.total - pool.spent;
-    if (count < 1 || count > available) {
-      errEl.textContent = `You only have ${available} ${dieType} available.`;
+    const totalUsed = Object.values(selections).reduce((s, v) => s + v.count, 0);
+    const healed    = parseInt(healInput.value, 10) || 0;
+
+    if (totalUsed === 0 && healed > 0) {
+      errEl.textContent = 'Select at least one die to use, or skip.';
       errEl.hidden = false; return;
     }
-    pool.spent += count;
+
+    Object.entries(selections).forEach(([dieType, s]) => {
+      if (s.count === 0) return;
+      const pool = c.hitDice.find(hd => hd.dieType === dieType);
+      if (pool) pool.spent += s.count;
+    });
+
     saveState();
     close();
     onDone(healed);
   };
 
-  // Clean up old listeners by cloning
   const newConfirm = confirmBtn.cloneNode(true);
   const newSkip    = skipBtn.cloneNode(true);
   confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
@@ -188,17 +229,17 @@ export function promptHitDiceUse(c, onDone) {
 
   newConfirm.addEventListener('click', onConfirm);
   newSkip.addEventListener('click', () => { close(); onDone(0); });
-  modal.addEventListener('keydown', function handler(e) {
-    if (e.key === 'Escape') { close(); onDone(0); modal.removeEventListener('keydown', handler); }
+
+  const keyHandler = e => {
+    if (e.key === 'Escape') { close(); onDone(0); modal.removeEventListener('keydown', keyHandler); }
     if (e.key === 'Enter')  { onConfirm(); }
-  });
+  };
+  modal.addEventListener('keydown', keyHandler);
 }
 
-// ─── Event listener wiring ───────────────────────────────────────────────────
+// ─── Event listener wiring ────────────────────────────────────────────────────
 
 export function initHitDiceControls() {
-
-  // Add pool modal
   const modal   = document.getElementById('hitdice-modal');
   const form    = document.getElementById('hitdice-form');
   const openBtn = document.getElementById('add-hitdice-btn');
@@ -226,7 +267,6 @@ export function initHitDiceControls() {
     if (total < 1)         { errEl.textContent = 'Enter at least 1.'; errEl.hidden = false; return; }
     if (total > remaining) { errEl.textContent = `Only ${remaining} dice slots left (max 20 total).`; errEl.hidden = false; return; }
 
-    // Stack with existing pool of same type rather than creating a duplicate
     const existing = c.hitDice.find(hd => hd.dieType === typeIn.value);
     if (existing) existing.total += total;
     else c.hitDice.push({ id: crypto.randomUUID(), dieType: typeIn.value, total, spent: 0 });

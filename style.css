@@ -1237,15 +1237,21 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   opacity: 0.7;
 }
 
+.edit-mode .empty-state {
+  display: none !important;
+}
+
 /* ─── TEMP MAX HP REDUCTION BAR ──────────────────────────────────────────────── */
 
 .hp-bar { position: relative; display: flex; }
 
 .hp-bar-lost {
+  position: absolute;
+  right: 0;
+  top: 0;
   height: 100%;
-  background: #374151;
-  border-left: 1px solid #f97316;
-  border-radius: 0 8px 8px 0;
+  background: #7cad1e;
+  border-left: 1px solid #5a8016;
   transition: width .22s ease;
 }
 
@@ -1266,4 +1272,184 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .levelup-btn {
   border-color: #16a34a !important;
   color: #16a34a !important;
+}
+
+/* ─── HIT DICE USE MODAL COUNTERS ────────────────────────────────────────────── */
+
+.hd-counter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.hd-counter-row:last-child { border-bottom: none; }
+
+.hd-counter-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.hd-counter-label {
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.hd-counter-avail {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.hd-counter-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hd-counter-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: unset;
+  padding: 0;
+}
+
+.hd-counter-btn:active { background: #333; }
+
+.hd-counter-val {
+  min-width: 28px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+/* ─── SESSION LOCK BUTTON ────────────────────────────────────────────────────── */
+
+.session-lock-btn {
+  font-size: 1.3rem;
+  min-width: 44px;
+  font-variant-emoji: text;
+  -webkit-font-variant-emoji: text;
+}
+
+/* ─── HP REDUCTION FIELD ─────────────────────────────────────────────────────── */
+
+.hp-reduction-field {
+  margin-top: 0.5rem;
+  background: rgba(249,115,22,0.07);
+  border: 1px solid rgba(249,115,22,0.25);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem 0.5rem;
+}
+
+.hp-reduction-label {
+  display: flex !important;
+  align-items: center;
+  gap: 0.4rem;
+  color: #7cad1e !important;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.hp-reduction-icon {
+  font-size: 1rem;
+}
+
+.hp-reduction-input {
+  width: 72px !important;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+  background: var(--surface2) !important;
+  border: 1px solid #7cad1e !important;
+  border-radius: 8px;
+  padding: 0.3rem !important;
+  color: #7cad1e !important;
+  margin-top: 0 !important;
+}
+
+.hp-reduction-hint {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ─── ATTUNEMENT BOXES CENTERED ──────────────────────────────────────────────── */
+
+#attunement-boxes {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+/* ─── RESET SLOTS BUTTON ─────────────────────────────────────────────────────── */
+
+.reset-slots-row {
+  margin-top: 0.5rem;
+}
+
+.reset-slots-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed rgba(124,58,237,0.4);
+  color: var(--purple);
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.5rem;
+  border-radius: 8px;
+  min-height: unset;
+}
+
+.reset-slots-btn:active { background: rgba(124,58,237,0.1); }
+
+/* ─── HP REDUCTION INLINE ────────────────────────────────────────────────────── */
+
+.hp-reduction-divider {
+  opacity: 0.3;
+  padding: 0 0.1rem;
+}
+
+.hp-reduction-inline {
+  border-color: rgba(124,173,30,0.35) !important;
+  color: #7cad1e !important;
+}
+
+.hp-reduction-inline::placeholder { color: rgba(124,173,30,0.4); }
+
+/* ─── LOCKED CHARACTER GRAYSCALE ─────────────────────────────────────────────── */
+
+.character-locked .screen-panel {
+  filter: grayscale(85%) opacity(0.75);
+  transition: filter 0.3s ease;
+}
+
+.character-locked .session-tab-bar {
+  filter: grayscale(85%) opacity(0.75);
+  transition: filter 0.3s ease;
+}
+
+/* ─── SESSION TOPROW BALANCE ─────────────────────────────────────────────────── */
+
+.session-toprow-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Give back button same width as the two-button right group so name stays centered */
+#back-btn {
+  min-width: 88px;
+  justify-content: flex-start;
 }

@@ -78,8 +78,10 @@ function _initCharacterModal() {
     const ch = {
       id: crypto.randomUUID(), name,
       maxHP: max, currentHP: max, tempHP: 0,
+      maxHPReduction: 0,
       deathSaves: { success: 0, failure: 0 },
       spellSlots: buildSpellSlotsFromCasterInfo(full, half, pact),
+      casterLevels: { full, half, pact },
       resources: [], statuses: [], exhaustion: 0,
       hitDice: [],
       coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
@@ -110,9 +112,17 @@ function _initEditCharacterModal() {
   const saveBtn = document.getElementById('edit-character-save');
   const errEl   = document.getElementById('edit-character-form-error');
 
+  const fullIn  = () => document.getElementById('edit-character-form-fullcaster');
+  const halfIn  = () => document.getElementById('edit-character-form-halfcaster');
+  const pactIn  = () => document.getElementById('edit-character-form-pactlevel');
+
   const open = () => {
     const c = getSelectedCharacter(); if (!c) return;
-    nameIn.value = c.name; maxIn.value = c.maxHP;
+    nameIn.value   = c.name;
+    maxIn.value    = c.maxHP;
+    fullIn().value = (c.casterLevels && c.casterLevels.full) || 0;
+    halfIn().value = (c.casterLevels && c.casterLevels.half) || 0;
+    pactIn().value = (c.casterLevels && c.casterLevels.pact) || 0;
     errEl.hidden = true; saveBtn.disabled = false;
     modal.hidden = false; nameIn.focus();
   };
@@ -122,18 +132,51 @@ function _initEditCharacterModal() {
   cancel.addEventListener('click', close);
   modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 
+  // Reset spell slots button — recalculates from the levels currently entered in the form
+  document.getElementById('reset-spellslots-btn').addEventListener('click', () => {
+    const c    = getSelectedCharacter(); if (!c) return;
+    const full = Math.max(0, parseInt(fullIn().value, 10) || 0);
+    const half = Math.max(0, parseInt(halfIn().value, 10) || 0);
+    const pact = Math.max(0, parseInt(pactIn().value, 10) || 0);
+    if (full + half + pact > 20) { errEl.textContent = 'Total caster level cannot exceed 20.'; errEl.hidden = false; return; }
+    const newSlots = buildSpellSlotsFromCasterInfo(full, half, pact);
+    newSlots.forEach(ns => {
+      const existing = c.spellSlots.find(s => s.level === ns.level && !!s.pact === ns.pact);
+      if (existing) { ns.id = existing.id; ns.used = Math.min(existing.used || 0, ns.max); }
+    });
+    c.spellSlots   = newSlots;
+    c.casterLevels = { full, half, pact };
+    saveState();
+    showToast('Spell slots reset');
+  });
+
   form.addEventListener('submit', e => {
     e.preventDefault();
     const name = nameIn.value.trim();
     const max  = parseInt(maxIn.value, 10);
+    const full = Math.max(0, parseInt(fullIn().value, 10) || 0);
+    const half = Math.max(0, parseInt(halfIn().value, 10) || 0);
+    const pact = Math.max(0, parseInt(pactIn().value, 10) || 0);
+
     if (!name) { errEl.textContent = 'Please enter a name.'; errEl.hidden = false; return; }
     if (!Number.isInteger(max) || max < 1) { errEl.textContent = 'Max HP must be a positive number.'; errEl.hidden = false; return; }
+    if (full + half + pact > 20) { errEl.textContent = 'Total caster level cannot exceed 20.'; errEl.hidden = false; return; }
 
     const c = getSelectedCharacter(); if (!c) return;
     const hpDiff = max - c.maxHP;
-    c.name  = name; c.maxHP = max;
-    // Proportionally adjust current HP when max increases
-    if (hpDiff > 0) c.currentHP = Math.min(max, c.currentHP + hpDiff);
+    c.name         = name;
+    c.maxHP        = max;
+    c.casterLevels = { full, half, pact };
+
+    // Recalculate spell slots, preserving used counts
+    const newSlots = buildSpellSlotsFromCasterInfo(full, half, pact);
+    newSlots.forEach(ns => {
+      const existing = c.spellSlots.find(s => s.level === ns.level && !!s.pact === ns.pact);
+      if (existing) { ns.id = existing.id; ns.used = Math.min(existing.used || 0, ns.max); }
+    });
+    c.spellSlots = newSlots;
+
+    if (hpDiff > 0) c.currentHP = Math.min(c.maxHP, c.currentHP + hpDiff);
     c.currentHP = Math.min(c.currentHP, c.maxHP);
 
     saveState(); renderSession(); close();
@@ -264,39 +307,45 @@ function _initLevelUpModal() {
 }
 
 function _grantLevelUpSlots(c, casterType) {
-  // We track caster levels per type on the character object
   if (!c.casterLevels) c.casterLevels = { full: 0, half: 0, pact: 0 };
 
   const prev = { ...c.casterLevels };
   c.casterLevels[casterType] = (c.casterLevels[casterType] || 0) + 1;
 
-  // Clamp total to 20
   const total = c.casterLevels.full + c.casterLevels.half + c.casterLevels.pact;
   if (total > 20) { c.casterLevels[casterType]--; return; }
 
-  // Compute old slots and new slots, add the difference
   const oldSlots = _computeSlots(prev.full, prev.half, prev.pact);
   const newSlots = _computeSlots(c.casterLevels.full, c.casterLevels.half, c.casterLevels.pact);
 
-  // For each level, if new > old, push the difference as new slot entries
-  newSlots.forEach(ns => {
-    const os = oldSlots.find(s => s.level === ns.level && s.pact === ns.pact);
-    const oldMax = os ? os.max : 0;
-    const diff   = ns.max - oldMax;
+  // Pact slots REPLACE previous entry (level and count change each level)
+  const oldPact = oldSlots.find(s => s.pact);
+  const newPact = newSlots.find(s => s.pact);
+  if (oldPact && newPact) {
+    const existing = c.spellSlots.find(s => s.pact);
+    if (existing) {
+      existing.level = newPact.level;
+      existing.max   = newPact.max;
+      existing.used  = Math.min(existing.used || 0, newPact.max);
+    }
+  } else if (newPact && !oldPact) {
+    c.spellSlots.push({ id: crypto.randomUUID(), level: newPact.level,
+      max: newPact.max, used: 0, recoversOn: 'short', pact: true });
+  }
+
+  // Non-pact slots — add differences only
+  newSlots.filter(s => !s.pact).forEach(ns => {
+    const os     = oldSlots.find(s => s.level === ns.level && !s.pact);
+    const diff   = ns.max - (os ? os.max : 0);
     if (diff <= 0) return;
-    const existing = c.spellSlots.find(s => s.level === ns.level && !!s.pact === ns.pact);
+    const existing = c.spellSlots.find(s => s.level === ns.level && !s.pact);
     if (existing) existing.max += diff;
-    else c.spellSlots.push({
-      id: crypto.randomUUID(), level: ns.level,
-      max: diff, used: 0,
-      recoversOn: ns.pact ? 'short' : 'long',
-      pact: ns.pact,
-    });
+    else c.spellSlots.push({ id: crypto.randomUUID(), level: ns.level,
+      max: diff, used: 0, recoversOn: 'long', pact: false });
   });
 }
 
 function _computeSlots(full, half, pact) {
-  // Inline the slot math here to avoid circular imports
   full = Math.max(0, full || 0);
   half = Math.max(0, half || 0);
   pact = Math.max(0, pact || 0);
@@ -322,19 +371,17 @@ function _computeSlots(full, half, pact) {
     19:[4,3,3,3,2,0,0,0,0],20:[4,3,3,3,2,0,0,0,0],
   };
 
-  const eff = Math.min(20, Math.floor(full + 0.5 * half));
+  const eff      = Math.min(20, Math.floor(full + 0.5 * half));
   const perLevel = (full === 0 && half > 0) ? halfTable[Math.min(20, half)] : fullTable[Math.min(20, eff)];
-  const out = [];
+  const out      = [];
   perLevel.forEach((count, idx) => {
     if (count > 0) out.push({ level: idx + 1, max: count, pact: false });
   });
 
   if (pact > 0) {
-    out.push({
-      level: Math.min(Math.ceil(pact / 2), 5),
-      max: pact === 1 ? 1 : 2,
-      pact: true,
-    });
+    const slotLevel = Math.min(Math.ceil(pact / 2), 5);
+    const slotCount = pact >= 17 ? 4 : pact >= 11 ? 3 : pact >= 2 ? 2 : 1;
+    out.push({ level: slotLevel, max: slotCount, pact: true });
   }
   return out;
 }

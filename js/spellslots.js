@@ -2,7 +2,7 @@
 // Renders the spell slot section and owns all caster-level math
 // (full caster, half caster, pact magic multiclass merging).
 
-import { saveState, state }     from './state.js';
+import { saveState }               from './state.js';
 import { editMode, makeSwipeable } from './ui.js';
 
 // ─── Slot tables ─────────────────────────────────────────────────────────────
@@ -49,26 +49,37 @@ export function buildSpellSlotsFromCasterInfo(full, half, pact) {
     if (over > 0) half = Math.max(0, half - over);
   }
 
-  const slotsPerLevel = (full === 0 && half > 0)
-    ? computeHalfCasterSlots(half)
-    : computeSlotsForEffectiveLevel(Math.floor(full + 0.5 * half));
-
   const out = [];
-  slotsPerLevel.forEach((count, idx) => {
-    if (count > 0)
-      out.push({ id: crypto.randomUUID(), level: idx + 1, max: count, used: 0, recoversOn: 'long', pact: false });
-  });
 
-  if (pact > 0) {
-    out.push({
-      id: crypto.randomUUID(),
-      level: Math.min(Math.ceil(pact / 2), 5),
-      max: pact === 1 ? 1 : 2,
-      used: 0, recoversOn: 'short', pact: true,
+  // Full/half caster slots
+  if (full > 0 || half > 0) {
+    const slotsPerLevel = (full === 0 && half > 0)
+      ? computeHalfCasterSlots(half)
+      : computeSlotsForEffectiveLevel(Math.floor(full + 0.5 * half));
+
+    slotsPerLevel.forEach((count, idx) => {
+      if (count > 0)
+        out.push({ id: crypto.randomUUID(), level: idx + 1, max: count, used: 0, recoversOn: 'long', pact: false });
     });
   }
 
-  // Merge duplicate levels (e.g. multiclass edge cases)
+  // Pact magic — one slot entry that replaces itself each level:
+  // slot level = ceil(pact/2) capped at 5
+  // slot count: 1 at lvl1, 2 at lvl2-10, 3 at lvl11-16, 4 at lvl17+
+  if (pact > 0) {
+    const slotLevel = Math.min(Math.ceil(pact / 2), 5);
+    const slotCount = pact >= 17 ? 4 : pact >= 11 ? 3 : pact >= 2 ? 2 : 1;
+    out.push({
+      id: crypto.randomUUID(),
+      level: slotLevel,
+      max: slotCount,
+      used: 0,
+      recoversOn: 'short',
+      pact: true,
+    });
+  }
+
+  // Merge duplicate non-pact levels (multiclass edge cases)
   const merged = {};
   out.forEach(s => {
     const key = `${s.level}-${s.recoversOn}-${s.pact ? 'p' : 'c'}`;
@@ -93,7 +104,7 @@ export function renderSpellSlots(c) {
   if (!c.spellSlots || c.spellSlots.length === 0) {
     const msg = document.createElement('p');
     msg.className = 'empty-state';
-    msg.textContent = 'No spell slots — tap ✎ then + Add Spell Slots';
+    msg.textContent = 'No spell slots — tap + Add Spell Slots';
     container.appendChild(msg);
     return;
   }
@@ -143,7 +154,7 @@ export function renderSpellSlots(c) {
       cb.checked = (s.used || 0) > i;
       cb.setAttribute('aria-label', title);
       cb.addEventListener('change', () => {
-        if (state.locked) { cb.checked = (s.used || 0) > i; return; }
+        if (c.locked) { cb.checked = (s.used || 0) > i; return; }
         if (editMode) {
           if (s.max > 0) {
             s.max--;

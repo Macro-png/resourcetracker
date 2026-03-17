@@ -172,8 +172,27 @@ export function initHPControls() {
     const c = getSelectedCharacter();
     if (!c) return;
     c.maxHPReduction = Math.max(0, parseInt(maxReductionInput.value, 10) || 0);
-    // Clamp currentHP to new effective max
+    if (c.maxHPReduction === 0) maxReductionInput.value = '';
+
+    // If reduction >= maxHP, character dies
+    if (c.maxHPReduction >= c.maxHP) {
+      c.maxHPReduction = c.maxHP;
+      c.currentHP      = 0;
+      c.dead           = true;
+      c.deathSaves     = { success: 0, failure: 0 };
+      delete c.concentration;
+      saveState();
+      showToast(`${c.name} has been slain!`);
+      document.dispatchEvent(new CustomEvent('app:rerender'));
+      return;
+    }
+
     c.currentHP = Math.min(c.currentHP, effectiveMaxHP(c));
+    // If currentHP hits 0 from reduction, go unconscious
+    if (c.currentHP === 0 && !c.dead) {
+      c.currentHP = 0;
+      showToast(`${c.name} is unconscious!`);
+    }
     saveState();
     document.dispatchEvent(new CustomEvent('app:rerender'));
   });

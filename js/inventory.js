@@ -90,6 +90,7 @@ export function renderInventory(c) {
     cb.checked = c.attunement > i;
     cb.setAttribute('aria-label', `Attunement slot ${i + 1}`);
     cb.addEventListener('change', () => {
+      if (c.locked) { cb.checked = c.attunement > i; return; }
       if (editMode) {
         if (c.attunementMax > 3) { c.attunementMax--; c.attunement = Math.min(c.attunement, c.attunementMax); }
       } else {
@@ -175,6 +176,7 @@ function _buildItemCard(el, item, c, onDelete) {
 
   const dec = document.createElement('button'); dec.className = 'item-qty-btn'; dec.textContent = '−';
   dec.addEventListener('click', () => {
+    if (c.locked) return;
     if (item.qty <= 1) { if (editMode) { onDelete(item); saveState(); renderInventory(c); } return; }
     item.qty--; saveState(); renderInventory(c);
   });
@@ -182,7 +184,7 @@ function _buildItemCard(el, item, c, onDelete) {
   const qtyEl = document.createElement('span'); qtyEl.className = 'item-qty'; qtyEl.textContent = item.qty;
 
   const inc = document.createElement('button'); inc.className = 'item-qty-btn'; inc.textContent = '+';
-  inc.addEventListener('click', () => { item.qty++; saveState(); renderInventory(c); });
+  inc.addEventListener('click', () => { if (c.locked) return; item.qty++; saveState(); renderInventory(c); });
 
   right.appendChild(dec); right.appendChild(qtyEl); right.appendChild(inc);
   el.appendChild(left); el.appendChild(right);
@@ -234,6 +236,7 @@ function _buildComponentCard(el, item, c, onDelete) {
     const buyBtn = document.createElement('button'); buyBtn.className = 'hp-action-pill heal component-action-pill'; buyBtn.textContent = 'Buy';
 
     useBtn.addEventListener('click', () => {
+      if (c.locked) return;
       const amount = parseFloat(amtInput.value) || 0;
       if (amount <= 0) { amtInput.focus(); return; }
       if (amount > item.gpAmount) { showToast(`Only ${item.gpAmount} gp left`); return; }
@@ -243,6 +246,7 @@ function _buildComponentCard(el, item, c, onDelete) {
     });
 
     buyBtn.addEventListener('click', () => {
+      if (c.locked) return;
       const amount = parseFloat(amtInput.value) || 0;
       if (amount <= 0) { amtInput.focus(); return; }
       if (!spendCoins(c, amount)) return;
@@ -260,12 +264,14 @@ function _buildComponentCard(el, item, c, onDelete) {
     const buyBtn = document.createElement('button'); buyBtn.className = 'hp-action-pill heal component-action-pill'; buyBtn.textContent = 'Buy';
 
     useBtn.addEventListener('click', () => {
+      if (c.locked) return;
       if (item.qty <= 0) { showToast(`No ${item.name} remaining`); return; }
       item.qty--; saveState(); renderInventory(c);
       showToast(`Used 1 ${item.name} (${item.qty} left)`);
     });
 
     buyBtn.addEventListener('click', () => {
+      if (c.locked) return;
       const cost = item.price || 0;
       if (cost > 0 && !spendCoins(c, cost)) return;
       item.qty++; saveState(); renderInventory(c);
@@ -303,7 +309,7 @@ export function initInventoryControls() {
   document.querySelectorAll('.coin-input').forEach(input => {
     const denom = input.closest('.coin-box').dataset.coin;
     input.addEventListener('change', () => {
-      const c = getSelectedCharacter(); if (!c) return;
+      const c = getSelectedCharacter(); if (!c || c.locked) { renderInventory(c); return; }
       if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
       c.coins[denom] = Math.max(0, parseInt(input.value, 10) || 0);
       input.value = c.coins[denom]; saveState();
@@ -312,7 +318,7 @@ export function initInventoryControls() {
   });
 
   document.getElementById('coin-add').addEventListener('click', () => {
-    const c = getSelectedCharacter(); if (!c) return;
+    const c = getSelectedCharacter(); if (!c || c.locked) return;
     if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
     const amount = parseInt(document.getElementById('coin-amount').value, 10) || 0;
     const denom  = document.getElementById('coin-denom').value;
@@ -324,7 +330,7 @@ export function initInventoryControls() {
   });
 
   document.getElementById('coin-spend').addEventListener('click', () => {
-    const c = getSelectedCharacter(); if (!c) return;
+    const c = getSelectedCharacter(); if (!c || c.locked) return;
     if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
     const amount = parseInt(document.getElementById('coin-amount').value, 10) || 0;
     const denom  = document.getElementById('coin-denom').value;
@@ -336,7 +342,7 @@ export function initInventoryControls() {
   });
 
   document.getElementById('coin-convert').addEventListener('click', () => {
-    const c = getSelectedCharacter(); if (!c) return;
+    const c = getSelectedCharacter(); if (!c || c.locked) return;
     if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
     let rem = c.coins.cp || 0; c.coins.sp = (c.coins.sp||0) + Math.floor(rem/10); c.coins.cp = rem%10;
     rem = c.coins.sp;           c.coins.gp = (c.coins.gp||0) + Math.floor(rem/10); c.coins.sp = rem%10;

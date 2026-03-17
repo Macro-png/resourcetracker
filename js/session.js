@@ -20,29 +20,14 @@ import { renderInventory }                         from './inventory.js';
 export function applyLockUI() { _applyLockUI(); }
 
 function _applyLockUI() {
-  const locked = !!state.locked;
+  const c      = getSelectedCharacter();
+  const locked = c ? !!c.locked : false;
   const btn    = document.getElementById('lock-btn');
   if (btn) {
-    btn.textContent = locked ? '🔒 Locked' : '🔓 Lock';
-    btn.style.color = locked ? '#f97316' : '';
-    btn.style.borderColor = locked ? '#f97316' : '';
+    btn.textContent  = locked ? '🔒︎' : '🔓︎';
+    btn.title        = locked ? 'Locked — tap to unlock' : 'Tap to lock character';
+    btn.style.color  = locked ? '#f97316' : '';
   }
-
-  // Show/hide lock banner on character list
-  let banner = document.getElementById('lock-banner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'lock-banner';
-    banner.className = 'lock-banner';
-    const listScreen = document.getElementById('character-list-screen');
-    listScreen.insertBefore(banner, listScreen.firstChild);
-  }
-  banner.textContent = '🔒 Locked — characters cannot be edited or modified';
-  banner.hidden = !locked;
-
-  // Disable add character button
-  const addBtn = document.getElementById('add-character-btn');
-  if (addBtn) addBtn.disabled = locked;
 }
 
 // ─── Screen switching ─────────────────────────────────────────────────────────
@@ -51,7 +36,6 @@ export function showCharacterList() {
   document.getElementById('session-screen').hidden        = true;
   document.getElementById('character-list-screen').hidden = false;
   document.getElementById('app-header').hidden            = false;
-  _applyLockUI();
 }
 
 export function showSession() {
@@ -125,6 +109,8 @@ export function renderCharacterList() {
 
     li.addEventListener('click', () => {
       state.selectedCharacterId = character.id;
+      setEditMode(false);
+      document.getElementById('edit-btn').textContent = '✎';
       saveState(); renderSession(); showSession();
       li.classList.add('highlight');
       setTimeout(() => li.classList.remove('highlight'), 600);
@@ -161,23 +147,22 @@ export function renderSession() {
   const effMax = effectiveMaxHP(c);
   const hpMaxEl = document.getElementById('hp-max');
   hpMaxEl.textContent = effMax;
-  hpMaxEl.style.color = (c.maxHPReduction || 0) > 0 ? '#f97316' : '';
+  hpMaxEl.style.color = (c.maxHPReduction || 0) > 0 ? '#7cad1e' : '';
 
   const tempEl = document.getElementById('hp-temp-inline');
   if (tempEl) tempEl.value = c.tempHP > 0 ? c.tempHP : '';
 
-  const fill    = document.getElementById('hp-bar-fill');
-  const fillLost = document.getElementById('hp-bar-lost');
-  if (fill) {
-    const pct = effMax > 0 ? Math.max(0, Math.min(100, Math.round(c.currentHP / effMax * 100))) : 0;
-    fill.style.width = pct + '%';
-  }
-  // Show grey segment for reduced max HP
-  if (fillLost) {
-    const reduction = c.maxHPReduction || 0;
+  const fill      = document.getElementById('hp-bar-fill');
+  const fillLost  = document.getElementById('hp-bar-lost');
+  const reduction = c.maxHPReduction || 0;
+
+  if (fill && fillLost) {
+    const filledPct = c.maxHP > 0 ? Math.max(0, Math.min(100, Math.round(c.currentHP / c.maxHP * 100))) : 0;
     const lostPct   = c.maxHP > 0 ? Math.round(reduction / c.maxHP * 100) : 0;
-    fillLost.style.width   = lostPct + '%';
-    fillLost.style.display = lostPct > 0 ? 'block' : 'none';
+    fill.style.width          = filledPct + '%';
+    fillLost.style.width      = lostPct + '%';
+    fillLost.style.display    = lostPct > 0 ? 'block' : 'none';
+    fillLost.style.marginLeft = lostPct > 0 ? 'auto' : '0';
   }
 
   // Dead state — hide everything except the dead card
@@ -204,21 +189,21 @@ export function renderSession() {
   renderResources(c);
   renderStatuses(c);
 
-  // Max HP reduction row — always visible, value synced
-  const reductionRow = document.getElementById('hp-reduction-row');
+  // Sync max HP reduction into edit modal input
   const reductionInput = document.getElementById('hp-max-reduction');
-  if (reductionRow && reductionInput) {
-    reductionRow.style.display = 'flex';
-    reductionInput.value = c.maxHPReduction > 0 ? c.maxHPReduction : '';
-  }
+  if (reductionInput) reductionInput.value = c.maxHPReduction > 0 ? c.maxHPReduction : '';
 
-  const locked = !!state.locked;
+  const locked = !!(c.locked);
 
-  // In locked mode force edit mode off and disable all controls
+  // In locked mode force edit mode off
   if (locked && editMode) { setEditMode(false); }
 
-  // Sync edit mode UI
+  // Update lock button appearance
+  _applyLockUI();
+
+  // Sync edit mode and locked classes
   document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
+  document.getElementById('session-screen').classList.toggle('character-locked', locked);
   document.getElementById('add-spellslot-btn').hidden  = !editMode;
   document.getElementById('add-resource-btn').hidden   = !editMode;
   document.getElementById('add-hitdice-btn').hidden    = !editMode;
@@ -311,11 +296,17 @@ export function initSessionControls() {
   document.getElementById('tab-stats').addEventListener('click',     () => switchTab('stats'));
   document.getElementById('tab-inventory').addEventListener('click', () => switchTab('inventory'));
 
-  // Lock button
+  // Lock button — per character
   document.getElementById('lock-btn').addEventListener('click', () => {
-    state.locked = !state.locked;
+    const c = getSelectedCharacter(); if (!c) return;
+    c.locked = !c.locked;
+    if (c.locked && editMode) {
+      setEditMode(false);
+      document.getElementById('edit-btn').textContent = '✎';
+      document.getElementById('session-screen').classList.remove('edit-mode');
+    }
     saveState();
-    _applyLockUI();
+    renderSession();
   });
 
   // Back
@@ -330,7 +321,8 @@ export function initSessionControls() {
 
   // Edit toggle
   document.getElementById('edit-btn').addEventListener('click', () => {
-    if (state.locked) return;
+    const c = getSelectedCharacter();
+    if (c && c.locked) return;
     setEditMode(!editMode);
     document.getElementById('edit-btn').textContent = editMode ? '✓' : '✎';
     document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
@@ -339,17 +331,19 @@ export function initSessionControls() {
     document.getElementById('add-hitdice-btn').hidden    = !editMode;
     document.getElementById('edit-character-btn').hidden = !editMode;
     document.getElementById('levelup-btn').hidden        = !editMode;
-    const c = getSelectedCharacter(); if (c) renderInventory(c);
+    if (c) renderInventory(c);
     if (!editMode) _closeSwiped();
   });
 
   // Rests
   document.getElementById('short-rest').addEventListener('click', () => {
+    const c = getSelectedCharacter(); if (c && c.locked) return;
     if (!confirm('Take a short rest?')) return;
     shortRest();
   });
 
   document.getElementById('long-rest').addEventListener('click', () => {
+    const c = getSelectedCharacter(); if (c && c.locked) return;
     if (!confirm('Take a long rest? This will restore HP and all resources.')) return;
     longRest(); showToast('Long rest taken — HP and resources restored'); flashBar();
   });
@@ -361,4 +355,4 @@ function _closeSwiped() {
     const content = el.querySelector('.swipe-content');
     if (content) { content.style.transition = 'transform 0.2s ease'; content.style.transform = ''; }
   });
-}
+} 

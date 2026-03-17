@@ -5,6 +5,7 @@
 
 import { saveState } from './state.js';
 import { showToast }  from './ui.js';
+import { state }      from './state.js';
 
 export const STANDARD_CONDITIONS = [
   'Prone', 'Unconscious',
@@ -30,6 +31,7 @@ export function hasCondition(c, name) {
 }
 
 export function toggleCondition(c, name) {
+  if (c.locked) return;
   if (hasCondition(c, name)) {
     c.statuses = c.statuses.filter(s => s.name !== name);
     // Clean up implied conditions that no longer have a source
@@ -57,6 +59,7 @@ export function getConcentration(c) {
 }
 
 export function toggleConcentration(c) {
+  if (c.locked) return;
   if (getConcentration(c)) {
     if (!confirm('Stop concentrating?')) return;
     delete c.concentration;
@@ -151,6 +154,7 @@ export function renderStatuses(c) {
     cb.checked = c.exhaustion > i;
     cb.setAttribute('aria-label', `Exhaustion level ${i + 1}`);
     cb.addEventListener('change', () => {
+      if (c.locked) { cb.checked = c.exhaustion > i; return; }
       c.exhaustion = cb.checked
         ? Math.min(6, c.exhaustion + 1)
         : Math.max(0, c.exhaustion - 1);

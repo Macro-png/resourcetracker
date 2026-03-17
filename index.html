@@ -12,7 +12,6 @@
   <header class="app-header" id="app-header">
     <h1 class="app-title">Resource Tracker</h1>
     <div class="app-toolbar">
-      <button id="lock-btn" aria-label="Lock app">🔓 Lock</button>
       <button id="export-btn" aria-label="Export data">⬇ Export</button>
       <button id="import-btn" aria-label="Import data">⬆ Import</button>
       <button id="pwa-install-btn" hidden aria-hidden="true">Install</button>
@@ -36,13 +35,10 @@
     <div class="session-toprow">
       <button id="back-btn" class="session-nav-btn">&#8249;</button>
       <h2 id="character-name" class="character-title"></h2>
-      <button id="edit-btn" class="session-nav-btn">&#9998;</button>
-    </div>
-
-    <!-- Tab bar -->
-    <div class="session-tab-bar">
-      <button id="tab-stats" class="tab-btn active">Stats</button>
-      <button id="tab-inventory" class="tab-btn">Inventory</button>
+      <div class="session-toprow-actions">
+        <button id="lock-btn" class="session-nav-btn session-lock-btn" aria-label="Lock character">&#128275;&#xFE0E;</button>
+        <button id="edit-btn" class="session-nav-btn">&#9998;</button>
+      </div>
     </div>
 
     <!-- Stats Panel -->
@@ -75,10 +71,9 @@
         <div class="hp-temp-row">
           <span class="hp-temp-label">Temp HP</span>
           <input id="hp-temp-inline" type="number" min="0" class="hp-temp-inline-input" placeholder="0" aria-label="Temporary HP" />
-        </div>
-        <div class="hp-temp-row" id="hp-reduction-row" style="display:none">
-          <span class="hp-temp-label" style="color:#f97316">Max −</span>
-          <input id="hp-max-reduction" type="number" min="0" class="hp-temp-inline-input" placeholder="0" aria-label="Max HP reduction" style="border-color:#f97316" />
+          <span class="hp-temp-label hp-reduction-divider">|</span>
+          <span class="hp-temp-label" style="color:#7cad1e">Max −</span>
+          <input id="hp-max-reduction" type="number" min="0" class="hp-temp-inline-input hp-reduction-inline" placeholder="0" aria-label="Max HP reduction" style="border-color:rgba(124,173,30,0.35);color:#7cad1e" />
         </div>
       </section>
 
@@ -208,6 +203,12 @@
       </main>
     </div><!-- /inventory-panel -->
 
+    <!-- Tab bar -->
+    <div class="session-tab-bar">
+      <button id="tab-stats" class="tab-btn active">Stats</button>
+      <button id="tab-inventory" class="tab-btn">Inventory</button>
+    </div>
+
   </div><!-- /session-screen -->
 
   <!-- ── MODALS ─────────────────────────────────────────────────────────── -->
@@ -238,6 +239,12 @@
       <form id="edit-character-form">
         <label>Name <input id="edit-character-form-name" name="name" required /></label>
         <label>Max HP <input id="edit-character-form-maxhp" name="maxhp" type="number" min="1" required /></label>
+        <label>Full caster levels <input id="edit-character-form-fullcaster" type="number" min="0" max="20" value="0" /></label>
+        <label>Half caster levels <input id="edit-character-form-halfcaster" type="number" min="0" max="20" value="0" /></label>
+        <label>Pact magic levels <input id="edit-character-form-pactlevel" type="number" min="0" max="20" value="0" /></label>
+        <div class="reset-slots-row">
+          <button type="button" id="reset-spellslots-btn" class="reset-slots-btn">↺ Reset spell slots to character levels</button>
+        </div>
         <div id="edit-character-form-error" class="form-error" hidden></div>
         <div class="row">
           <button type="submit" class="primary-btn" id="edit-character-save">Save</button>
@@ -379,15 +386,11 @@
   <div id="hitdice-use-modal" class="modal" hidden role="dialog" aria-modal="true">
     <div class="modal-content">
       <h3>Use Hit Dice</h3>
-      <p style="color:var(--muted);font-size:0.9rem;margin:0 0 0.75rem">Roll your hit dice and enter how much HP you recover.</p>
-      <label>Die type
-        <select id="hitdice-use-type" style="width:100%;margin-top:0.3rem;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;"></select>
-      </label>
-      <label style="margin-top:0.5rem;display:block">Number of dice
-        <input id="hitdice-use-count" type="number" min="1" value="1" style="width:100%;margin-top:0.3rem;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;text-align:center;font-size:1.2rem;font-weight:800;" />
-      </label>
-      <label style="margin-top:0.5rem;display:block">HP recovered (enter 0 to skip healing)
-        <input id="hitdice-use-healed" type="number" min="0" placeholder="0" style="width:100%;margin-top:0.3rem;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;text-align:center;font-size:1.4rem;font-weight:900;" />
+      <p style="color:var(--muted);font-size:0.85rem;margin:0 0 0.75rem">Select dice to spend, then enter HP recovered.</p>
+      <div id="hitdice-use-counters"></div>
+      <label style="display:block;margin-top:0.75rem">HP recovered
+        <input id="hitdice-use-healed" type="number" min="0" placeholder="0"
+          style="width:100%;margin-top:0.3rem;padding:0.6rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:inherit;text-align:center;font-size:1.4rem;font-weight:900;" />
       </label>
       <div id="hitdice-use-error" class="form-error" hidden></div>
       <div class="row" style="margin-top:0.75rem">
