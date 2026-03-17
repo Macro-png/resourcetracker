@@ -1,6 +1,6 @@
 // ─── Resources ────────────────────────────────────────────────────────────────
-// Renders the Resources section. Resources with max < 4 use a checkbox
-// (slot-box) UI identical to spell slots; those with max ≥ 4 switch to a
+// Renders the Resources section. Resources with max <= 3 use a checkbox
+// (slot-box) UI identical to spell slots; those with max >= 4 switch to a
 // counter (−  n/max  +) layout automatically.
 
 import { saveState }               from './state.js';
@@ -32,8 +32,8 @@ export function renderResources(c) {
       document.dispatchEvent(new CustomEvent('app:rerender'));
     };
 
-    if (r.max < 4) {
-      // ── Checkbox mode ──────────────────────────────────────────────────────
+    if (r.max <= 3) {
+      // ── Checkbox mode (max 1–3) ────────────────────────────────────────────
       controls.className = 'spellslot-controls resource-controls';
 
       for (let i = 0; i < r.max; i++) {
@@ -85,7 +85,7 @@ export function renderResources(c) {
       controls.appendChild(addLabel);
 
     } else {
-      // ── Counter mode ───────────────────────────────────────────────────────
+      // ── Counter mode (max >= 4) ────────────────────────────────────────────
       controls.className = 'spellslot-controls resource-controls';
 
       const flash = box => {

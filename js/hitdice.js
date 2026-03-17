@@ -77,7 +77,12 @@ export function renderHitDice(c) {
           saveState();
           document.dispatchEvent(new CustomEvent('app:rerender'));
         } else {
-          cb.checked = i < hd.spent;
+          // Toggle spent directly — no heal prompt
+          hd.spent = cb.checked
+            ? Math.min(hd.total, hd.spent + 1)
+            : Math.max(0, hd.spent - 1);
+          saveState();
+          document.dispatchEvent(new CustomEvent('app:rerender'));
         }
       });
       const box = document.createElement('span');
@@ -218,6 +223,7 @@ export function promptHitDiceUse(c, onDone) {
     });
 
     saveState();
+    modal.removeEventListener('keydown', keyHandler); // FIX: always clean up
     close();
     onDone(healed);
   };
@@ -228,11 +234,15 @@ export function promptHitDiceUse(c, onDone) {
   skipBtn.parentNode.replaceChild(newSkip, skipBtn);
 
   newConfirm.addEventListener('click', onConfirm);
-  newSkip.addEventListener('click', () => { close(); onDone(0); });
+  newSkip.addEventListener('click', () => {
+    modal.removeEventListener('keydown', keyHandler); // FIX: clean up on skip too
+    close();
+    onDone(0);
+  });
 
   const keyHandler = e => {
-    if (e.key === 'Escape') { close(); onDone(0); modal.removeEventListener('keydown', keyHandler); }
-    if (e.key === 'Enter')  { onConfirm(); }
+    if (e.key === 'Escape') { modal.removeEventListener('keydown', keyHandler); close(); onDone(0); }
+    if (e.key === 'Enter')  { modal.removeEventListener('keydown', keyHandler); onConfirm(); } // FIX: remove on Enter
   };
   modal.addEventListener('keydown', keyHandler);
 }

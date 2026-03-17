@@ -1,10 +1,10 @@
 const CACHE_NAME = 'dnd-tracker-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/pwa/manifest.json'
+  '/resourcetracker/',
+  '/resourcetracker/index.html',
+  '/resourcetracker/style.css',
+  '/resourcetracker/app.js',
+  '/resourcetracker/pwa/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -28,7 +28,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first for API/JSON requests, cache-first for app shell
   const req = event.request;
 
   if (req.method !== 'GET') return;
@@ -36,7 +35,7 @@ self.addEventListener('fetch', (event) => {
   // Navigation requests -> serve index.html fallback
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(() => caches.match('/index.html'))
+      fetch(req).catch(() => caches.match('/resourcetracker/index.html'))
     );
     return;
   }
@@ -52,7 +51,6 @@ self.addEventListener('fetch', (event) => {
           return res;
         })
         .catch(() => {
-          // Fallback for images or other assets could be added here
           return cached;
         });
     })
