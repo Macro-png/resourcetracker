@@ -379,7 +379,7 @@ button:disabled { opacity: 0.5; }
 /* FIX: boxes scale down to fit, never overflow */
 .death-boxes {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.25rem;
   flex-wrap: nowrap;
   justify-content: center;
   width: 100%;
@@ -387,8 +387,8 @@ button:disabled { opacity: 0.5; }
 }
 
 .death-boxes .slot-box {
-  width: clamp(28px, 8vw, 50px);
-  height: clamp(28px, 8vw, 50px);
+  width: clamp(50px, 12vw, 50px);
+  height: clamp(50px, 12vw, 50px);
   flex-shrink: 1;
   border-radius: 10px;
 }
