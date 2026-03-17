@@ -1,10 +1,10 @@
-const CACHE_NAME = 'dnd-tracker-v1';
+const CACHE_NAME = 'dnd-tracker-v2';
 const ASSETS = [
-  '/resourcetracker/',
-  '/resourcetracker/index.html',
-  '/resourcetracker/style.css',
-  '/resourcetracker/app.js',
-  '/resourcetracker/pwa/manifest.json'
+  '/',
+  '/index.html',
+  '/style.css',
+  '/app.js',
+  '/pwa/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (event) => {
   // Navigation requests -> serve index.html fallback
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(() => caches.match('/resourcetracker/index.html'))
+      fetch(req).catch(() => caches.match('/index.html'))
     );
     return;
   }
