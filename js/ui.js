@@ -1,7 +1,4 @@
 // ─── UI Utilities ─────────────────────────────────────────────────────────────
-// Generic UI helpers with no domain knowledge.
-// editMode is a live binding — setEditMode() updates it and all importers
-// that read `editMode` will see the new value immediately.
 
 export let editMode = false;
 
@@ -21,8 +18,7 @@ export function showToast(msg, ms = 1800) {
 }
 
 // ─── Swipe-to-delete ─────────────────────────────────────────────────────────
-// Wraps el's children in a .swipe-content div and adds a .swipe-delete-bg
-// behind it. Only active when editMode is true.
+// Supports both touch (mobile) and mouse drag (PC).
 
 export function makeSwipeable(el, onDelete) {
   el.classList.add('swipe-item');
@@ -38,21 +34,21 @@ export function makeSwipeable(el, onDelete) {
   el.appendChild(bg);
   el.appendChild(content);
 
-  let startX = 0, startY = 0, tracking = false;
+  let startX = 0, startY = 0, tracking = false, mouseDown = false;
   const SWIPE_WIDTH     = 56;
   const SWIPE_THRESHOLD = 20;
 
-  content.addEventListener('touchstart', e => {
-    if (!editMode) return;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    tracking = false;
-  }, { passive: true });
+  // ── Shared drag logic ──────────────────────────────────────────────────────
 
-  content.addEventListener('touchmove', e => {
-    if (!editMode) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
+  function onDragStart(clientX, clientY) {
+    startX   = clientX;
+    startY   = clientY;
+    tracking = false;
+  }
+
+  function onDragMove(clientX, clientY) {
+    const dx = clientX - startX;
+    const dy = clientY - startY;
     if (!tracking && Math.abs(dy) > Math.abs(dx)) return;
     tracking = true;
     const clamped = Math.max(-SWIPE_WIDTH, Math.min(0, dx));
@@ -60,10 +56,9 @@ export function makeSwipeable(el, onDelete) {
     content.style.transform  = `translateX(${clamped}px)`;
     bg.style.transition      = 'none';
     bg.style.opacity         = String(Math.min(1, Math.abs(clamped) / SWIPE_WIDTH));
-  }, { passive: true });
+  }
 
-  content.addEventListener('touchend', () => {
-    if (!editMode) return;
+  function onDragEnd() {
     content.style.transition = 'transform 0.2s ease';
     bg.style.transition      = 'opacity 0.15s ease';
     const x = new DOMMatrix(getComputedStyle(content).transform).m41;
@@ -76,7 +71,47 @@ export function makeSwipeable(el, onDelete) {
       content.style.transform = '';
       bg.style.opacity = '0';
     }
+  }
+
+  // ── Touch events ───────────────────────────────────────────────────────────
+
+  content.addEventListener('touchstart', e => {
+    if (!editMode) return;
+    onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  content.addEventListener('touchmove', e => {
+    if (!editMode) return;
+    onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  content.addEventListener('touchend', () => {
+    if (!editMode) return;
+    onDragEnd();
   });
+
+  // ── Mouse events (PC) ──────────────────────────────────────────────────────
+
+  content.addEventListener('mousedown', e => {
+    if (!editMode) return;
+    mouseDown = true;
+    onDragStart(e.clientX, e.clientY);
+    e.preventDefault(); // prevent text selection while dragging
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!mouseDown || !editMode) return;
+    onDragMove(e.clientX, e.clientY);
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    if (!editMode) return;
+    onDragEnd();
+  });
+
+  // ── Delete button ──────────────────────────────────────────────────────────
 
   bg.addEventListener('click', () => {
     if (!editMode) return;
@@ -88,13 +123,18 @@ export function makeSwipeable(el, onDelete) {
     setTimeout(onDelete, 260);
   });
 
-  // Tap elsewhere closes the open swipe
-  document.addEventListener('touchstart', e => {
+  // ── Close on outside interaction ───────────────────────────────────────────
+
+  const closeIfOutside = e => {
     if (!editMode) return;
     if (!el.contains(e.target) && el.classList.contains('swiped')) {
       el.classList.remove('swiped');
       content.style.transition = 'transform 0.2s ease';
       content.style.transform  = '';
+      bg.style.opacity         = '0';
     }
-  }, { passive: true });
+  };
+
+  document.addEventListener('touchstart', closeIfOutside, { passive: true });
+  document.addEventListener('mousedown',  closeIfOutside);
 }
