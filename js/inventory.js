@@ -1,13 +1,6 @@
 // ─── Inventory ────────────────────────────────────────────────────────────────
-// Coins (with smart spend/change logic), attunement slots, items, and spell
-// components. renderInventory() is called directly from inventory controls
-// (no need for the 'app:rerender' event) because the inventory panel is
-// independent of the stats panel.
-
 import { saveState, getSelectedCharacter } from './state.js';
 import { editMode, showToast, makeSwipeable } from './ui.js';
-
-// ─── Coin constants ───────────────────────────────────────────────────────────
 
 export const COIN_ORDER = ['cp', 'sp', 'ep', 'gp', 'pp'];
 export const COIN_IN_CP = { cp: 1, sp: 10, ep: 50, gp: 100, pp: 1000 };
@@ -16,51 +9,103 @@ export function coinsToCP(coins) {
   return COIN_ORDER.reduce((sum, d) => sum + (coins[d] || 0) * COIN_IN_CP[d], 0);
 }
 
-// Spend gpAmount gold from c.coins, handling change without using EP
+// spendCoins: called from component Buy buttons (price is always in GP)
 export function spendCoins(c, gpAmount) {
   if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
-  return _spendCP(c, Math.round(gpAmount * COIN_IN_CP.gp));
+  return _spendCP(c, Math.round(gpAmount * COIN_IN_CP.gp), 'gp');
 }
 
-function _spendCP(c, spendCP) {
+// _spendCP: core spend logic.
+// preferDenom: the denomination the player is spending (e.g. 'gp').
+//
+// Algorithm:
+//   1. Drain preferDenom coins first (whole units, no conversion).
+//   2. If still short, convert ALL smaller denominations into the
+//      preferDenom pool (cp+sp+ep → gp-equivalent, floored to whole gp).
+//      Any fractional remainder that can't become a full preferDenom coin
+//      stays as-is (cp/sp untouched).
+//   3. If still short, break one coin of the next denomination above
+//      preferDenom (e.g. pp → gp), take what is needed, return change in
+//      preferDenom (e.g. leftover pp-value returned as gp).
+//
+// Net result: change is always in the preferred denomination (usually gp),
+// small coins (cp/sp) are only consumed when they combine to a whole unit.
+function _spendCP(c, spendCP, preferDenom) {
   if (coinsToCP(c.coins) < spendCP) { showToast('Not enough coins!'); return false; }
 
-  const coins = { ...c.coins };
-  let remaining = spendCP;
+  const coins     = { ...c.coins };
+  const prefVal   = COIN_IN_CP[preferDenom];
+  let   remaining = spendCP; // in CP
 
-  // Step 1: pay with existing coins, no conversion needed
-  for (const d of ['cp', 'sp', 'ep', 'gp', 'pp']) {
-    if (remaining <= 0) break;
-    const val    = COIN_IN_CP[d];
-    const canUse = Math.min(coins[d] || 0, Math.floor(remaining / val));
-    coins[d]  -= canUse;
-    remaining -= canUse * val;
+  // Step 1: drain preferred denom (whole units)
+  if ((coins[preferDenom] || 0) > 0) {
+    const canUse        = Math.min(coins[preferDenom], Math.floor(remaining / prefVal));
+    coins[preferDenom] -= canUse;
+    remaining          -= canUse * prefVal;
   }
 
-  // Step 2: break the smallest coin that covers the remainder and give change
-  if (remaining > 0) {
-    for (const d of ['cp', 'sp', 'ep', 'gp', 'pp']) {
-      if (COIN_IN_CP[d] >= remaining && (coins[d] || 0) > 0) {
-        coins[d]--;
-        let changeRem = COIN_IN_CP[d] - remaining;
-        remaining = 0;
-        // Give change back in GP → SP → CP (never EP)
-        for (const cd of ['gp', 'sp', 'cp']) {
-          const cv   = COIN_IN_CP[cd];
-          const give = Math.floor(changeRem / cv);
-          if (give > 0) { coins[cd] = (coins[cd] || 0) + give; changeRem -= give * cv; }
-        }
-        break;
-      }
+  if (remaining <= 0) { c.coins = coins; return true; }
+
+  // Step 2: convert smaller denominations into preferred denom pool
+  // Collect the total CP value of all smaller denoms, convert to whole
+  // preferred-denom units, add them to coins[preferDenom], leave dust as-is.
+  const ORDER = ['cp', 'sp', 'ep', 'gp', 'pp'];
+  const prefIdx = ORDER.indexOf(preferDenom);
+
+  let smallCP = 0;
+  for (let i = 0; i < prefIdx; i++) {
+    const d = ORDER[i];
+    smallCP += (coins[d] || 0) * COIN_IN_CP[d];
+  }
+  // How many whole preferred-denom coins can we make from small change?
+  const fromSmall = Math.floor(smallCP / prefVal);
+  if (fromSmall > 0) {
+    // Consume small coins LARGEST-to-SMALLEST so that large denoms absorb as
+    // much as possible and cp is only touched for the exact residual.
+    // e.g. to make 5gp from 55cp+45sp: use 45sp(=450cp) then 50cp, leaving 5cp intact.
+    let toConsume = fromSmall * prefVal; // exact CP value to collect
+    for (let i = prefIdx - 1; i >= 0; i--) {
+      if (toConsume <= 0) break;
+      const d    = ORDER[i];
+      const val  = COIN_IN_CP[d];
+      const have = coins[d] || 0;
+      if (have <= 0) continue;
+      const use  = Math.min(have, Math.floor(toConsume / val));
+      coins[d]  -= use;
+      toConsume -= use * val;
     }
+    coins[preferDenom] = (coins[preferDenom] || 0) + fromSmall;
+  }
+
+  // Now try draining preferred denom again with the newly added coins
+  if ((coins[preferDenom] || 0) > 0) {
+    const canUse        = Math.min(coins[preferDenom], Math.floor(remaining / prefVal));
+    coins[preferDenom] -= canUse;
+    remaining          -= canUse * prefVal;
+  }
+
+  if (remaining <= 0) { c.coins = coins; return true; }
+
+  // Step 3: still short — break one coin from the next denom above preferred
+  for (let i = prefIdx + 1; i < ORDER.length; i++) {
+    if (remaining <= 0) break;
+    const d   = ORDER[i];
+    const val = COIN_IN_CP[d];
+    if ((coins[d] || 0) <= 0) continue;
+
+    // Break one coin, take what we need, return change in preferDenom
+    coins[d]--;
+    const change = val - remaining;
+    remaining = 0;
+    coins[preferDenom] = (coins[preferDenom] || 0) + Math.floor(change / prefVal);
+    // Any sub-prefVal dust (e.g. 9 cp when pref is gp) is lost — edge case
+    // only arises with ep/pp and non-round amounts.
   }
 
   if (remaining > 0) { showToast('Not enough coins!'); return false; }
   c.coins = coins;
   return true;
 }
-
-// ─── Render ──────────────────────────────────────────────────────────────────
 
 export function renderInventory(c) {
   if (!c.coins)      c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
@@ -69,13 +114,11 @@ export function renderInventory(c) {
   if (!('attunement'    in c)) c.attunement    = 0;
   if (!('attunementMax' in c)) c.attunementMax = 3;
 
-  // Coin inputs
   COIN_ORDER.forEach(denom => {
     const input = document.querySelector(`.coin-box[data-coin="${denom}"] .coin-input`);
     if (input) input.value = c.coins[denom] || 0;
   });
 
-  // Attunement
   const boxesEl = document.getElementById('attunement-boxes');
   boxesEl.innerHTML = '';
 
@@ -83,44 +126,29 @@ export function renderInventory(c) {
     const label = document.createElement('label');
     label.className = 'slot-toggle';
     label.title = `Attunement slot ${i + 1}`;
-
     const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.className = 'slot-checkbox';
-    cb.checked = c.attunement > i;
+    cb.type = 'checkbox'; cb.className = 'slot-checkbox'; cb.checked = c.attunement > i;
     cb.setAttribute('aria-label', `Attunement slot ${i + 1}`);
     cb.addEventListener('change', () => {
       if (c.locked) { cb.checked = c.attunement > i; return; }
       if (editMode) {
         if (c.attunementMax > 3) { c.attunementMax--; c.attunement = Math.min(c.attunement, c.attunementMax); }
       } else {
-        c.attunement = cb.checked
-          ? Math.min(c.attunementMax, c.attunement + 1)
-          : Math.max(0, c.attunement - 1);
+        c.attunement = cb.checked ? Math.min(c.attunementMax, c.attunement + 1) : Math.max(0, c.attunement - 1);
       }
       saveState(); renderInventory(c);
     });
-
-    const box = document.createElement('span');
-    box.className = 'slot-box attunement-box';
-    label.appendChild(cb);
-    label.appendChild(box);
-    boxesEl.appendChild(label);
+    const box = document.createElement('span'); box.className = 'slot-box attunement-box';
+    label.appendChild(cb); label.appendChild(box); boxesEl.appendChild(label);
   }
 
   if (c.attunementMax < 6) {
     const addLabel = document.createElement('label');
-    addLabel.className = 'slot-toggle slot-add-toggle';
-    addLabel.title = 'Add attunement slot';
+    addLabel.className = 'slot-toggle slot-add-toggle'; addLabel.title = 'Add attunement slot';
     const addBox = document.createElement('span');
-    addBox.className = 'slot-box attunement-box slot-add-box';
-    addBox.textContent = '+';
+    addBox.className = 'slot-box attunement-box slot-add-box'; addBox.textContent = '+';
     addLabel.appendChild(addBox);
-    addLabel.addEventListener('click', () => {
-      if (!editMode) return;
-      c.attunementMax++;
-      saveState(); renderInventory(c);
-    });
+    addLabel.addEventListener('click', () => { if (!editMode) return; c.attunementMax++; saveState(); renderInventory(c); });
     boxesEl.appendChild(addLabel);
   }
 
@@ -133,82 +161,53 @@ export function renderInventory(c) {
 
 function renderItemList(c, list, container, onDelete, isComponent = false) {
   container.innerHTML = '';
-
   if (!list || list.length === 0) {
-    const msg = document.createElement('p');
-    msg.className = 'empty-state';
-    msg.textContent = isComponent
-      ? 'No components — tap ✎ then + Add Component'
-      : 'No items — tap ✎ then + Add Item';
-    container.appendChild(msg);
-    return;
+    const msg = document.createElement('p'); msg.className = 'empty-state';
+    msg.textContent = isComponent ? 'No components — tap ✎ then + Add Component' : 'No items — tap ✎ then + Add Item';
+    container.appendChild(msg); return;
   }
-
   list.forEach(item => {
     const el = document.createElement('div');
-
-    if (isComponent) {
-      el.className = 'component-card card small';
-      _buildComponentCard(el, item, c, onDelete);
-    } else {
-      el.className = 'item-row card small';
-      _buildItemCard(el, item, c, onDelete);
-    }
-
+    if (isComponent) { el.className = 'component-card card small'; _buildComponentCard(el, item, c, onDelete); }
+    else             { el.className = 'item-row card small';        _buildItemCard(el, item, c, onDelete); }
     container.appendChild(el);
   });
 }
 
 function _buildItemCard(el, item, c, onDelete) {
-  const left  = document.createElement('div'); left.className  = 'item-left';
+  const left = document.createElement('div'); left.className = 'item-left';
   const right = document.createElement('div'); right.className = 'item-right';
-
-  const nameEl = document.createElement('div');
-  nameEl.className = 'item-name';
-  nameEl.textContent = item.name;
+  const nameEl = document.createElement('div'); nameEl.className = 'item-name'; nameEl.textContent = item.name;
   left.appendChild(nameEl);
-
   if (item.attuned) {
     const badgesEl = document.createElement('div'); badgesEl.className = 'item-badges';
     const b = document.createElement('span'); b.className = 'item-badge attuned-badge'; b.textContent = '⟳ Attuned';
     badgesEl.appendChild(b); left.appendChild(badgesEl);
   }
-
   const dec = document.createElement('button'); dec.className = 'item-qty-btn'; dec.textContent = '−';
   dec.addEventListener('click', () => {
     if (c.locked) return;
     if (item.qty <= 1) { if (editMode) { onDelete(item); saveState(); renderInventory(c); } return; }
     item.qty--; saveState(); renderInventory(c);
   });
-
   const qtyEl = document.createElement('span'); qtyEl.className = 'item-qty'; qtyEl.textContent = item.qty;
-
   const inc = document.createElement('button'); inc.className = 'item-qty-btn'; inc.textContent = '+';
   inc.addEventListener('click', () => { if (c.locked) return; item.qty++; saveState(); renderInventory(c); });
-
   right.appendChild(dec); right.appendChild(qtyEl); right.appendChild(inc);
   el.appendChild(left); el.appendChild(right);
   makeSwipeable(el, () => { onDelete(item); saveState(); renderInventory(c); });
 }
 
 function _buildComponentCard(el, item, c, onDelete) {
-  const topRow = document.createElement('div');
-  topRow.className = 'component-top-row';
-
-  const nameEl = document.createElement('span');
-  nameEl.className = 'item-name';
-  nameEl.textContent = item.name;
+  const topRow = document.createElement('div'); topRow.className = 'component-top-row';
+  const nameEl = document.createElement('span'); nameEl.className = 'item-name'; nameEl.textContent = item.name;
   topRow.appendChild(nameEl);
 
   if (!editMode) {
     if (item.qty === null) {
-      // Pool mode: show remaining GP
-      const remEl = document.createElement('span');
-      remEl.className = 'component-meta component-remaining';
-      remEl.textContent = `${item.gpAmount} gp`;
+      const remEl = document.createElement('span'); remEl.className = 'component-meta component-remaining'; remEl.textContent = `${item.gpAmount} gp`;
       topRow.appendChild(remEl);
     } else {
-      // Qty mode: show price and count
       const leftGroup = document.createElement('div'); leftGroup.className = 'component-name-group';
       leftGroup.appendChild(nameEl);
       const priceEl = document.createElement('span'); priceEl.className = 'component-meta'; priceEl.textContent = `${item.price} gp`;
@@ -218,23 +217,18 @@ function _buildComponentCard(el, item, c, onDelete) {
       topRow.appendChild(qtyEl);
     }
   }
-
   el.appendChild(topRow);
 
   if (editMode) {
-    const editBtn = document.createElement('button');
-    editBtn.className = 'item-use-btn';
-    editBtn.textContent = '✎ Edit';
+    const editBtn = document.createElement('button'); editBtn.className = 'item-use-btn'; editBtn.textContent = '✎ Edit';
     editBtn.style.cssText = 'border-color:var(--muted);color:var(--muted);width:100%;margin-top:0.4rem;';
     editBtn.addEventListener('click', () => _openComponentEditModal(item, c));
     el.appendChild(editBtn);
   } else if (item.qty === null) {
-    // Pool mode action row: Use | amount | Buy
     const actionRow = document.createElement('div'); actionRow.className = 'component-action-row';
     const useBtn = document.createElement('button'); useBtn.className = 'hp-action-pill damage component-action-pill'; useBtn.textContent = 'Use';
     const amtInput = document.createElement('input'); amtInput.type = 'number'; amtInput.min = '0'; amtInput.placeholder = '0'; amtInput.className = 'hp-amount-input component-amount-input'; amtInput.setAttribute('aria-label', 'GP amount');
     const buyBtn = document.createElement('button'); buyBtn.className = 'hp-action-pill heal component-action-pill'; buyBtn.textContent = 'Buy';
-
     useBtn.addEventListener('click', () => {
       if (c.locked) return;
       const amount = parseFloat(amtInput.value) || 0;
@@ -244,7 +238,6 @@ function _buildComponentCard(el, item, c, onDelete) {
       amtInput.value = ''; saveState(); renderInventory(c);
       showToast(`Used ${amount} gp — ${item.name} (${item.gpAmount} gp left)`);
     });
-
     buyBtn.addEventListener('click', () => {
       if (c.locked) return;
       const amount = parseFloat(amtInput.value) || 0;
@@ -254,22 +247,18 @@ function _buildComponentCard(el, item, c, onDelete) {
       amtInput.value = ''; saveState(); renderInventory(c);
       showToast(`Bought ${amount} gp of ${item.name}`);
     });
-
     actionRow.appendChild(useBtn); actionRow.appendChild(amtInput); actionRow.appendChild(buyBtn);
     el.appendChild(actionRow);
   } else {
-    // Qty mode action row: Use | Buy
     const actionRow = document.createElement('div'); actionRow.className = 'component-action-row';
     const useBtn = document.createElement('button'); useBtn.className = 'hp-action-pill damage component-action-pill'; useBtn.textContent = 'Use';
     const buyBtn = document.createElement('button'); buyBtn.className = 'hp-action-pill heal component-action-pill'; buyBtn.textContent = 'Buy';
-
     useBtn.addEventListener('click', () => {
       if (c.locked) return;
       if (item.qty <= 0) { showToast(`No ${item.name} remaining`); return; }
       item.qty--; saveState(); renderInventory(c);
       showToast(`Used 1 ${item.name} (${item.qty} left)`);
     });
-
     buyBtn.addEventListener('click', () => {
       if (c.locked) return;
       const cost = item.price || 0;
@@ -277,15 +266,11 @@ function _buildComponentCard(el, item, c, onDelete) {
       item.qty++; saveState(); renderInventory(c);
       showToast(cost > 0 ? `Bought 1 ${item.name} for ${cost} gp` : `Added 1 ${item.name}`);
     });
-
     actionRow.appendChild(useBtn); actionRow.appendChild(buyBtn);
     el.appendChild(actionRow);
   }
-
   makeSwipeable(el, () => { onDelete(item); saveState(); renderInventory(c); });
 }
-
-// ─── Component edit modal (private) ──────────────────────────────────────────
 
 let _compEditItem = null;
 let _compEditChar = null;
@@ -302,10 +287,7 @@ function _openComponentEditModal(item, c) {
   document.getElementById('component-edit-modal').hidden = false;
 }
 
-// ─── Event listener wiring ───────────────────────────────────────────────────
-
 export function initInventoryControls() {
-  // Coin direct inputs
   document.querySelectorAll('.coin-input').forEach(input => {
     const denom = input.closest('.coin-box').dataset.coin;
     input.addEventListener('change', () => {
@@ -325,8 +307,7 @@ export function initInventoryControls() {
     if (amount <= 0) return;
     c.coins[denom] = (c.coins[denom] || 0) + amount;
     document.getElementById('coin-amount').value = '';
-    saveState(); renderInventory(c);
-    showToast(`+${amount} ${denom.toUpperCase()}`);
+    saveState(); renderInventory(c); showToast(`+${amount} ${denom.toUpperCase()}`);
   });
 
   document.getElementById('coin-spend').addEventListener('click', () => {
@@ -335,35 +316,28 @@ export function initInventoryControls() {
     const amount = parseInt(document.getElementById('coin-amount').value, 10) || 0;
     const denom  = document.getElementById('coin-denom').value;
     if (amount <= 0) return;
-    if (!_spendCP(c, amount * COIN_IN_CP[denom])) return;
+    if (!_spendCP(c, amount * COIN_IN_CP[denom], denom)) return;
     document.getElementById('coin-amount').value = '';
-    saveState(); renderInventory(c);
-    showToast(`−${amount} ${denom.toUpperCase()}`);
+    saveState(); renderInventory(c); showToast(`−${amount} ${denom.toUpperCase()}`);
   });
 
   document.getElementById('coin-convert').addEventListener('click', () => {
     const c = getSelectedCharacter(); if (!c || c.locked) return;
     if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
     let rem = c.coins.cp || 0; c.coins.sp = (c.coins.sp||0) + Math.floor(rem/10); c.coins.cp = rem%10;
-    rem = c.coins.sp;           c.coins.gp = (c.coins.gp||0) + Math.floor(rem/10); c.coins.sp = rem%10;
-    rem = c.coins.gp;           c.coins.pp = (c.coins.pp||0) + Math.floor(rem/10); c.coins.gp = rem%10;
+    rem = c.coins.sp;          c.coins.gp = (c.coins.gp||0) + Math.floor(rem/10); c.coins.sp = rem%10;
+    rem = c.coins.gp;          c.coins.pp = (c.coins.pp||0) + Math.floor(rem/10); c.coins.gp = rem%10;
     saveState(); renderInventory(c); showToast('Coins converted');
   });
 
-  // Item modal
   (function() {
-    const modal   = document.getElementById('item-modal');
-    const form    = document.getElementById('item-form');
-    const openBtn = document.getElementById('add-item-btn');
-    const cancel  = document.getElementById('item-cancel');
-    const nameIn  = document.getElementById('item-form-name');
-    const qtyIn   = document.getElementById('item-form-qty');
-    const attIn   = document.getElementById('item-form-attuned');
-    const errEl   = document.getElementById('item-form-error');
-    const open    = () => { form.reset(); qtyIn.value = 1; errEl.hidden = true; modal.hidden = false; nameIn.focus(); };
-    const close   = () => { modal.hidden = true; };
-    openBtn.addEventListener('click', open);
-    cancel.addEventListener('click', close);
+    const modal = document.getElementById('item-modal'), form = document.getElementById('item-form'),
+          openBtn = document.getElementById('add-item-btn'), cancel = document.getElementById('item-cancel'),
+          nameIn = document.getElementById('item-form-name'), qtyIn = document.getElementById('item-form-qty'),
+          attIn = document.getElementById('item-form-attuned'), errEl = document.getElementById('item-form-error');
+    const open = () => { form.reset(); qtyIn.value = 1; errEl.hidden = true; modal.hidden = false; nameIn.focus(); };
+    const close = () => { modal.hidden = true; };
+    openBtn.addEventListener('click', open); cancel.addEventListener('click', close);
     modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
     form.addEventListener('submit', e => {
       e.preventDefault(); errEl.hidden = true;
@@ -375,57 +349,44 @@ export function initInventoryControls() {
         errEl.textContent = 'Already at 3 attuned items (max).'; errEl.hidden = false; return;
       }
       c.items.push({ id: crypto.randomUUID(), name, qty: Math.max(1, parseInt(qtyIn.value,10)||1), attuned: attIn.checked });
-      saveState(); renderInventory(c); close();
-      showToast(`Added '${name}'`);
+      saveState(); renderInventory(c); close(); showToast(`Added '${name}'`);
     });
   })();
 
-  // Component modal
   (function() {
-    const modal   = document.getElementById('component-modal');
-    const form    = document.getElementById('component-form');
-    const openBtn = document.getElementById('add-component-btn');
-    const cancel  = document.getElementById('component-cancel');
-    const nameIn  = document.getElementById('component-form-name');
-    const gpIn    = document.getElementById('component-form-gp');
-    const qtyIn   = document.getElementById('component-form-qty');
-    const errEl   = document.getElementById('component-form-error');
-    const open    = () => { form.reset(); errEl.hidden = true; modal.hidden = false; nameIn.focus(); };
-    const close   = () => { modal.hidden = true; };
-    openBtn.addEventListener('click', open);
-    cancel.addEventListener('click', close);
+    const modal = document.getElementById('component-modal'), form = document.getElementById('component-form'),
+          openBtn = document.getElementById('add-component-btn'), cancel = document.getElementById('component-cancel'),
+          nameIn = document.getElementById('component-form-name'), gpIn = document.getElementById('component-form-gp'),
+          qtyIn = document.getElementById('component-form-qty'), errEl = document.getElementById('component-form-error');
+    const open = () => { form.reset(); errEl.hidden = true; modal.hidden = false; nameIn.focus(); };
+    const close = () => { modal.hidden = true; };
+    openBtn.addEventListener('click', open); cancel.addEventListener('click', close);
     modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
     form.addEventListener('submit', e => {
       e.preventDefault(); errEl.hidden = true;
-      const name = nameIn.value.trim();
-      const gp   = parseFloat(gpIn.value);
+      const name = nameIn.value.trim(), gp = parseFloat(gpIn.value);
       if (!name)              { errEl.textContent = 'Please enter a name.'; errEl.hidden = false; return; }
       if (isNaN(gp) || gp<0) { errEl.textContent = 'Please enter a valid GP amount.'; errEl.hidden = false; return; }
       const c = getSelectedCharacter(); if (!c) return;
       if (!c.components) c.components = [];
-      const qtyVal = qtyIn.value.trim();
-      const hasQty = qtyVal !== '' && parseInt(qtyVal,10) >= 1;
+      const qtyVal = qtyIn.value.trim(), hasQty = qtyVal !== '' && parseInt(qtyVal,10) >= 1;
       c.components.push(hasQty
         ? { id: crypto.randomUUID(), name, qty: parseInt(qtyVal,10), price: gp, gpAmount: null }
         : { id: crypto.randomUUID(), name, qty: null, price: null, gpAmount: gp }
       );
-      saveState(); renderInventory(c); close();
-      showToast(`Added component '${name}'`);
+      saveState(); renderInventory(c); close(); showToast(`Added component '${name}'`);
     });
   })();
 
-  // Component edit modal
   (function() {
-    const modal  = document.getElementById('component-edit-modal');
-    const form   = document.getElementById('component-edit-form');
-    const cancel = document.getElementById('component-edit-cancel');
-    const close  = () => { modal.hidden = true; };
+    const modal = document.getElementById('component-edit-modal'), form = document.getElementById('component-edit-form'),
+          cancel = document.getElementById('component-edit-cancel');
+    const close = () => { modal.hidden = true; };
     cancel.addEventListener('click', close);
     modal.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
     form.addEventListener('submit', e => {
       e.preventDefault();
-      const item = _compEditItem; const c = _compEditChar;
-      if (!item || !c) return;
+      const item = _compEditItem, c = _compEditChar; if (!item || !c) return;
       if (item.qty === null) {
         const gp = parseFloat(document.getElementById('component-edit-gp').value);
         if (isNaN(gp)||gp<0) { document.getElementById('component-edit-error').textContent='Enter a valid GP amount.'; document.getElementById('component-edit-error').hidden=false; return; }
@@ -434,8 +395,7 @@ export function initInventoryControls() {
         item.price = Math.max(0, parseFloat(document.getElementById('component-edit-price').value)||0);
         item.qty   = Math.max(0, parseInt(document.getElementById('component-edit-qty').value,10)||0);
       }
-      saveState(); renderInventory(c); close();
-      showToast(`Updated ${item.name}`);
+      saveState(); renderInventory(c); close(); showToast(`Updated ${item.name}`);
     });
   })();
 }

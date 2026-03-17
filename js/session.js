@@ -1,21 +1,12 @@
 // ─── Session ──────────────────────────────────────────────────────────────────
-// Owns the session screen: tab switching, renderSession, renderCharacterList,
-// rest logic, edit mode toggle, and back navigation.
-//
-// Uses a custom 'app:rerender' DOM event so sub-modules (resources, spellslots,
-// conditions, hitdice) can trigger a full re-render without importing session.js
-// (which would create circular dependencies).
-
 import { state, saveState, getSelectedCharacter } from './state.js';
 import { editMode, setEditMode, showToast }       from './ui.js';
-import { renderDeathSaves, effectiveMaxHP }                from './hp.js';
+import { renderDeathSaves, effectiveMaxHP }        from './hp.js';
 import { renderSpellSlots }                        from './spellslots.js';
 import { renderResources }                         from './resources.js';
 import { renderStatuses }                          from './conditions.js';
 import { renderHitDice, mergeHitDicePools, HD_SIZES, promptHitDiceUse } from './hitdice.js';
 import { renderInventory }                         from './inventory.js';
-
-// ─── Lock UI ──────────────────────────────────────────────────────────────────
 
 export function applyLockUI() { _applyLockUI(); }
 
@@ -29,8 +20,6 @@ function _applyLockUI() {
     btn.style.color  = locked ? '#f97316' : '';
   }
 }
-
-// ─── Screen switching ─────────────────────────────────────────────────────────
 
 export function showCharacterList() {
   document.getElementById('session-screen').hidden        = true;
@@ -47,7 +36,7 @@ export function showSession() {
 
 export function switchTab(tab) {
   const isStats = tab === 'stats';
-  document.getElementById('stats-panel').hidden   = !isStats;
+  document.getElementById('stats-panel').hidden     = !isStats;
   document.getElementById('inventory-panel').hidden = isStats;
   document.getElementById('tab-stats').classList.toggle('active', isStats);
   document.getElementById('tab-inventory').classList.toggle('active', !isStats);
@@ -65,8 +54,6 @@ export function switchTab(tab) {
     renderInventory(c);
   }
 }
-
-// ─── Character list ───────────────────────────────────────────────────────────
 
 export function renderCharacterList() {
   const list = document.getElementById('character-list');
@@ -125,13 +112,11 @@ export function renderCharacterList() {
   });
 }
 
-// ─── Session render ───────────────────────────────────────────────────────────
-
 export function renderSession() {
   const c = getSelectedCharacter();
   if (!c) return;
 
-  // Reset visibility
+  // Reset all sections to visible
   ['hp-card', 'spellslots-section', 'resources-section',
    'conditions-section', 'rest-section', 'hitdice-section'].forEach(id => {
     document.getElementById(id).hidden = false;
@@ -140,11 +125,12 @@ export function renderSession() {
   document.getElementById('death-saves-card').hidden       = true;
   document.getElementById('concentration-banner').hidden   = true;
   document.getElementById('concentration-toggle').hidden   = false;
+  document.getElementById('concentration-toggle').disabled = false;
 
   document.getElementById('character-name').textContent = c.name;
   document.getElementById('hp-current').textContent     = c.currentHP;
 
-  const effMax = effectiveMaxHP(c);
+  const effMax  = effectiveMaxHP(c);
   const hpMaxEl = document.getElementById('hp-max');
   hpMaxEl.textContent = effMax;
   hpMaxEl.style.color = (c.maxHPReduction || 0) > 0 ? '#7cad1e' : '';
@@ -177,10 +163,13 @@ export function renderSession() {
     return;
   }
 
-  // At 0 HP — hide spell slots and resources, show death saves
-  if (c.currentHP === 0) {
-    document.getElementById('spellslots-section').hidden = true;
-    document.getElementById('resources-section').hidden  = true;
+  // FIX: At 0 HP OR unconscious — hide spell slots, resources, and concentration
+  const isUnconscious = (c.statuses || []).some(s => s.name === 'Unconscious');
+  if (c.currentHP === 0 || isUnconscious) {
+    document.getElementById('spellslots-section').hidden   = true;
+    document.getElementById('resources-section').hidden    = true;
+    document.getElementById('concentration-toggle').hidden = true;
+    document.getElementById('concentration-banner').hidden = true;
   }
 
   renderDeathSaves(c);
@@ -189,19 +178,13 @@ export function renderSession() {
   renderResources(c);
   renderStatuses(c);
 
-  // Sync max HP reduction into edit modal input
   const reductionInput = document.getElementById('hp-max-reduction');
   if (reductionInput) reductionInput.value = c.maxHPReduction > 0 ? c.maxHPReduction : '';
 
   const locked = !!(c.locked);
-
-  // In locked mode force edit mode off
   if (locked && editMode) { setEditMode(false); }
-
-  // Update lock button appearance
   _applyLockUI();
 
-  // Sync edit mode and locked classes
   document.getElementById('session-screen').classList.toggle('edit-mode', editMode);
   document.getElementById('session-screen').classList.toggle('character-locked', locked);
   document.getElementById('add-spellslot-btn').hidden  = !editMode;
@@ -210,7 +193,6 @@ export function renderSession() {
   document.getElementById('edit-character-btn').hidden = !editMode;
   document.getElementById('levelup-btn').hidden        = !editMode;
 
-  // Lock/unlock interactive HP controls
   const lockableIds = ['hp-add','hp-subtract','hp-update-amount','hp-temp-inline',
                        'hp-max-reduction','short-rest','long-rest','revive-btn',
                        'concentration-toggle','edit-btn'];
@@ -220,8 +202,6 @@ export function renderSession() {
   });
   document.getElementById('edit-btn').style.opacity = locked ? '0.35' : '';
 }
-
-// ─── Rest helpers ─────────────────────────────────────────────────────────────
 
 function flashBar() {
   const fill = document.getElementById('hp-bar-fill');
@@ -263,15 +243,13 @@ function longRest() {
 
   if (c.hitDice && c.hitDice.length) {
     mergeHitDicePools(c);
-    const totalHD  = c.hitDice.reduce((sum, hd) => sum + hd.total, 0);
-    let toRecover  = Math.max(1, Math.floor(totalHD / 2));
-    // Recover from largest dice first
+    const totalHD = c.hitDice.reduce((sum, hd) => sum + hd.total, 0);
+    let toRecover = Math.max(1, Math.floor(totalHD / 2));
     for (const size of HD_SIZES) {
       const hd = c.hitDice.find(x => x.dieType === size);
       if (!hd || toRecover <= 0) continue;
       const r = Math.min(hd.spent, toRecover); hd.spent -= r; toRecover -= r;
     }
-    // Any leftover goes to remaining pools
     for (const hd of c.hitDice) {
       if (toRecover <= 0) break;
       const r = Math.min(hd.spent, toRecover); hd.spent -= r; toRecover -= r;
@@ -283,20 +261,16 @@ function longRest() {
   c.maxHPReduction = 0;
   c.exhaustion     = Math.max(0, (c.exhaustion || 0) - 1);
   c.deathSaves     = { success: 0, failure: 0 };
+  delete c.concentration;
   saveState(); renderSession();
 }
 
-// ─── Event listener wiring ───────────────────────────────────────────────────
-
 export function initSessionControls() {
-  // Global re-render listener (fired by sub-modules after state changes)
   document.addEventListener('app:rerender', () => renderSession());
 
-  // Tabs
   document.getElementById('tab-stats').addEventListener('click',     () => switchTab('stats'));
   document.getElementById('tab-inventory').addEventListener('click', () => switchTab('inventory'));
 
-  // Lock button — per character
   document.getElementById('lock-btn').addEventListener('click', () => {
     const c = getSelectedCharacter(); if (!c) return;
     c.locked = !c.locked;
@@ -309,7 +283,6 @@ export function initSessionControls() {
     renderSession();
   });
 
-  // Back
   document.getElementById('back-btn').addEventListener('click', () => {
     setEditMode(false);
     document.getElementById('edit-btn').textContent = '✎';
@@ -319,7 +292,6 @@ export function initSessionControls() {
     saveState(); showCharacterList(); renderCharacterList();
   });
 
-  // Edit toggle
   document.getElementById('edit-btn').addEventListener('click', () => {
     const c = getSelectedCharacter();
     if (c && c.locked) return;
@@ -335,7 +307,6 @@ export function initSessionControls() {
     if (!editMode) _closeSwiped();
   });
 
-  // Rests
   document.getElementById('short-rest').addEventListener('click', () => {
     const c = getSelectedCharacter(); if (c && c.locked) return;
     if (!confirm('Take a short rest?')) return;
@@ -355,4 +326,4 @@ function _closeSwiped() {
     const content = el.querySelector('.swipe-content');
     if (content) { content.style.transition = 'transform 0.2s ease'; content.style.transform = ''; }
   });
-} 
+}
