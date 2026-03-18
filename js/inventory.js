@@ -9,27 +9,11 @@ export function coinsToCP(coins) {
   return COIN_ORDER.reduce((sum, d) => sum + (coins[d] || 0) * COIN_IN_CP[d], 0);
 }
 
-// spendCoins: called from component Buy buttons (price is always in GP)
 export function spendCoins(c, gpAmount) {
   if (!c.coins) c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
   return _spendCP(c, Math.round(gpAmount * COIN_IN_CP.gp), 'gp');
 }
 
-// _spendCP: core spend logic.
-// preferDenom: the denomination the player is spending (e.g. 'gp').
-//
-// Algorithm:
-//   1. Drain preferDenom coins first (whole units, no conversion).
-//   2. If still short, convert ALL smaller denominations into the
-//      preferDenom pool (cp+sp+ep → gp-equivalent, floored to whole gp).
-//      Any fractional remainder that can't become a full preferDenom coin
-//      stays as-is (cp/sp untouched).
-//   3. If still short, break one coin of the next denomination above
-//      preferDenom (e.g. pp → gp), take what is needed, return change in
-//      preferDenom (e.g. leftover pp-value returned as gp).
-//
-// Net result: change is always in the preferred denomination (usually gp),
-// small coins (cp/sp) are only consumed when they combine to a whole unit.
 function _spendCP(c, spendCP, preferDenom) {
   if (coinsToCP(c.coins) < spendCP) { showToast('Not enough coins!'); return false; }
 
@@ -46,9 +30,6 @@ function _spendCP(c, spendCP, preferDenom) {
 
   if (remaining <= 0) { c.coins = coins; return true; }
 
-  // Step 2: convert smaller denominations into preferred denom pool
-  // Collect the total CP value of all smaller denoms, convert to whole
-  // preferred-denom units, add them to coins[preferDenom], leave dust as-is.
   const ORDER = ['cp', 'sp', 'ep', 'gp', 'pp'];
   const prefIdx = ORDER.indexOf(preferDenom);
 
@@ -57,13 +38,10 @@ function _spendCP(c, spendCP, preferDenom) {
     const d = ORDER[i];
     smallCP += (coins[d] || 0) * COIN_IN_CP[d];
   }
-  // How many whole preferred-denom coins can we make from small change?
+
   const fromSmall = Math.floor(smallCP / prefVal);
   if (fromSmall > 0) {
-    // Consume small coins LARGEST-to-SMALLEST so that large denoms absorb as
-    // much as possible and cp is only touched for the exact residual.
-    // e.g. to make 5gp from 55cp+45sp: use 45sp(=450cp) then 50cp, leaving 5cp intact.
-    let toConsume = fromSmall * prefVal; // exact CP value to collect
+    let toConsume = fromSmall * prefVal;
     for (let i = prefIdx - 1; i >= 0; i--) {
       if (toConsume <= 0) break;
       const d    = ORDER[i];
@@ -77,7 +55,6 @@ function _spendCP(c, spendCP, preferDenom) {
     coins[preferDenom] = (coins[preferDenom] || 0) + fromSmall;
   }
 
-  // Now try draining preferred denom again with the newly added coins
   if ((coins[preferDenom] || 0) > 0) {
     const canUse        = Math.min(coins[preferDenom], Math.floor(remaining / prefVal));
     coins[preferDenom] -= canUse;
@@ -86,20 +63,16 @@ function _spendCP(c, spendCP, preferDenom) {
 
   if (remaining <= 0) { c.coins = coins; return true; }
 
-  // Step 3: still short — break one coin from the next denom above preferred
   for (let i = prefIdx + 1; i < ORDER.length; i++) {
     if (remaining <= 0) break;
     const d   = ORDER[i];
     const val = COIN_IN_CP[d];
     if ((coins[d] || 0) <= 0) continue;
 
-    // Break one coin, take what we need, return change in preferDenom
     coins[d]--;
     const change = val - remaining;
     remaining = 0;
     coins[preferDenom] = (coins[preferDenom] || 0) + Math.floor(change / prefVal);
-    // Any sub-prefVal dust (e.g. 9 cp when pref is gp) is lost — edge case
-    // only arises with ep/pp and non-round amounts.
   }
 
   if (remaining > 0) { showToast('Not enough coins!'); return false; }
