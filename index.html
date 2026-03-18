@@ -23,12 +23,13 @@
 
   <!-- CHARACTER LIST SCREEN -->
   <div id="character-list-screen" class="screen">
-    <ul id="character-list"></ul>
+    <main class="session-content">
+      <ul id="character-list"></ul>
+    </main>
     <footer class="screen-footer">
       <button id="add-character-btn" class="primary-btn">+ Add Character</button>
       <p style="text-align:center;padding:0.5rem 0 0;font-size:0.72rem;color:var(--muted);">
-        Not affiliated with Wizards of the Coast. · 
-        <a href="privacy.html" style="color:var(--muted);">Privacy Policy</a>
+        Not affiliated with Wizards of the Coast. · <a href="/privacy.html" style="color:var(--muted);">Privacy Policy</a>
       </p>
     </footer>
   </div>
@@ -191,33 +192,35 @@
           <div id="attunement-boxes" class="spellslot-controls"></div>
         </section>
 
-        <!-- ITEMS -->
+        <!-- ITEMS (commented out — planned for future redesign) -->
+        <!--
         <section class="card">
           <h3>Items</h3>
           <div id="items-container"></div>
           <button id="add-item-btn" class="link-btn" hidden>+ Add Item</button>
         </section>
-
+        -->
+ 
         <!-- SPELL COMPONENTS -->
         <section class="card">
           <h3>Spell Components</h3>
           <div id="components-container"></div>
           <button id="add-component-btn" class="link-btn" hidden>+ Add Component</button>
         </section>
-
+ 
       </main>
     </div><!-- /inventory-panel -->
-
+ 
     <!-- Tab bar -->
     <div class="session-tab-bar">
       <button id="tab-stats" class="tab-btn active">Stats</button>
       <button id="tab-inventory" class="tab-btn">Inventory</button>
     </div>
-
+ 
   </div><!-- /session-screen -->
-
+ 
   <!-- ── MODALS ─────────────────────────────────────────────────────────── -->
-
+ 
   <!-- Add Character -->
   <div id="character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
     <div class="modal-content">
@@ -236,7 +239,7 @@
       </form>
     </div>
   </div>
-
+ 
   <!-- Edit Character -->
   <div id="edit-character-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="edit-character-modal-title">
     <div class="modal-content">
@@ -258,7 +261,7 @@
       </form>
     </div>
   </div>
-
+ 
   <div id="resource-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="resource-modal-title">
     <div class="modal-content">
       <h3 id="resource-modal-title">Add Resource</h3>
@@ -280,7 +283,7 @@
       </form>
     </div>
   </div>
-
+ 
   <div id="spellslot-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="spellslot-modal-title">
     <div class="modal-content">
       <h3 id="spellslot-modal-title">Add Spell Slot</h3>
@@ -302,7 +305,7 @@
       </form>
     </div>
   </div>
-
+ 
   <div id="concentration-modal" class="modal" hidden role="dialog" aria-modal="true">
     <div class="modal-content">
       <h3>&#9888;&#65039; Concentration Check!</h3>
@@ -313,7 +316,9 @@
       </div>
     </div>
   </div>
-
+ 
+  <!-- Item modal (commented out — planned for future redesign) -->
+  <!--
   <div id="item-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="item-modal-title">
     <div class="modal-content">
       <h3 id="item-modal-title">Add Item</h3>
@@ -329,7 +334,8 @@
       </form>
     </div>
   </div>
-
+  -->
+ 
   <div id="component-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="component-modal-title">
     <div class="modal-content">
       <h3 id="component-modal-title">Add Spell Component</h3>
@@ -345,7 +351,7 @@
       </form>
     </div>
   </div>
-
+ 
   <div id="component-edit-modal" class="modal" hidden role="dialog" aria-modal="true">
     <div class="modal-content">
       <h3 id="component-edit-modal-title">Edit Component</h3>
@@ -365,7 +371,7 @@
       </form>
     </div>
   </div>
-
+ 
   <div id="hitdice-modal" class="modal" hidden role="dialog" aria-modal="true">
     <div class="modal-content">
       <h3>Add Hit Die Pool</h3>
@@ -387,7 +393,7 @@
       </form>
     </div>
   </div>
-
+ 
   <div id="hitdice-use-modal" class="modal" hidden role="dialog" aria-modal="true">
     <div class="modal-content">
       <h3>Use Hit Dice</h3>
@@ -404,7 +410,7 @@
       </div>
     </div>
   </div>
-
+ 
   <template id="resource-template">
     <div class="spellslot-item card small resource-item">
       <div class="slot-row">
@@ -413,7 +419,7 @@
       </div>
     </div>
   </template>
-
+ 
   <template id="spellslot-template">
     <div class="spellslot-item card small">
       <div class="slot-row">
@@ -422,7 +428,7 @@
       </div>
     </div>
   </template>
-
+ 
   <div id="levelup-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="levelup-modal-title">
     <div class="modal-content">
       <h3 id="levelup-modal-title">⬆ Level Up</h3>
@@ -444,11 +450,11 @@
       </form>
     </div>
   </div>
-
+ 
   <input id="import-file" type="file" accept="application/json" hidden />
-
+ 
   <div id="toast" class="toast" hidden aria-live="polite"></div>
-
+ 
   <script type="module" src="app.js"></script>
 </body>
 </html>

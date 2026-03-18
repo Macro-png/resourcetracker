@@ -82,7 +82,7 @@ function _spendCP(c, spendCP, preferDenom) {
 
 export function renderInventory(c) {
   if (!c.coins)      c.coins = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
-  if (!c.items)      c.items = [];
+  if (!c.items)      c.items = [];         // keep data intact for future use
   if (!c.components) c.components = [];
   if (!('attunement'    in c)) c.attunement    = 0;
   if (!('attunementMax' in c)) c.attunementMax = 3;
@@ -125,10 +125,13 @@ export function renderInventory(c) {
     boxesEl.appendChild(addLabel);
   }
 
-  renderItemList(c, c.items,      document.getElementById('items-container'),      item => { c.items      = c.items.filter(x => x.id !== item.id); });
+  // Items UI commented out — planned for future redesign.
+  // Data (c.items) is preserved in localStorage and will not be lost.
+  // renderItemList(c, c.items, document.getElementById('items-container'), item => { c.items = c.items.filter(x => x.id !== item.id); });
+  // document.getElementById('add-item-btn').hidden = !editMode;
+
   renderItemList(c, c.components, document.getElementById('components-container'), item => { c.components = c.components.filter(x => x.id !== item.id); }, true);
 
-  document.getElementById('add-item-btn').hidden      = !editMode;
   document.getElementById('add-component-btn').hidden = !editMode;
 }
 
@@ -303,6 +306,9 @@ export function initInventoryControls() {
     saveState(); renderInventory(c); showToast('Coins converted');
   });
 
+  // Items modal — commented out (planned for future redesign).
+  // Data is preserved in localStorage. Re-enable this block when Items UI is ready.
+  /*
   (function() {
     const modal = document.getElementById('item-modal'), form = document.getElementById('item-form'),
           openBtn = document.getElementById('add-item-btn'), cancel = document.getElementById('item-cancel'),
@@ -325,6 +331,7 @@ export function initInventoryControls() {
       saveState(); renderInventory(c); close(); showToast(`Added '${name}'`);
     });
   })();
+  */
 
   (function() {
     const modal = document.getElementById('component-modal'), form = document.getElementById('component-form'),
