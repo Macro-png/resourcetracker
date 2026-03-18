@@ -787,6 +787,8 @@ button:disabled { opacity: 0.5; }
   border-radius: 10px;
   padding: 0.5rem 0.15rem 0.4rem;
   gap: 0.15rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .coin-label {
@@ -804,8 +806,9 @@ button:disabled { opacity: 0.5; }
 
 .coin-input {
   width: 100%;
+  max-width: 100%;
   text-align: center;
-  font-size: 1.4rem;
+  font-size: clamp(0.85rem, 3.5vw, 1.4rem);
   font-weight: 900;
   background: transparent;
   border: none;
