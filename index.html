@@ -7,6 +7,8 @@
   <title>D&D Resource Tracker</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="pwa/manifest.json" />
+  <link rel="icon" type="image/png" href="/assets/Logo App DND Small.png" />
+  <link rel="apple-touch-icon" href="/assets/Logo App DND Large.png" />
 </head>
 <body>
   <header class="app-header" id="app-header">
@@ -21,11 +23,11 @@
 
   <!-- CHARACTER LIST SCREEN -->
   <div id="character-list-screen" class="screen">
-    <main class="session-content">
-      <ul id="character-list" class="list"></ul>
-    </main>
     <footer class="screen-footer">
       <button id="add-character-btn" class="primary-btn" aria-haspopup="dialog">+ Add Character</button>
+      <p style="text-align:center;padding:0.5rem 0 0;font-size:0.72rem;color:var(--muted);">
+        Not affiliated with Wizards of the Coast or Dungeons &amp; Dragons. · <a href="privacy.html" style="color:var(--muted);">Privacy Policy</a>
+      </p>
     </footer>
   </div>
 
@@ -446,8 +448,5 @@
   <div id="toast" class="toast" hidden aria-live="polite"></div>
 
   <script type="module" src="app.js"></script>
-  <footer style="text-align:center;padding:0.5rem 1rem;font-size:0.72rem;color:var(--muted);background:#1a1a1a;">
-  Not affiliated with Wizards of the Coast or Dungeons & Dragons. <a href="/privacy.html" style="color:var(--muted);">Privacy Policy</a>
-  </footer>
 </body>
 </html>
