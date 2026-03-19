@@ -37,9 +37,26 @@ function parseAuroraFile(xmlText) {
   const level = firstInt(displayProps, 'level', 1);
 
   // ── ability scores ──
+  // Aurora stores BASE scores in <abilities> — before racial bonuses and ASIs.
+  // We need to sum up ASI bonuses from Ability Score Improvement elements
+  // to get the final score used for HP calculation.
   const abilitiesEl = xml.getElementsByTagName('abilities')[0] || null;
-  const con         = firstInt(abilitiesEl, 'constitution', 10);
-  const conMod      = Math.floor((con - 10) / 2);
+  const baseCon     = firstInt(abilitiesEl, 'constitution', 10);
+
+  // Parse ASI bonuses from registered IDs, e.g.:
+  //   ID_..._ASI_CONSTITUTION_INCREASE_1  -> +1 CON
+  //   ID_INTERNAL_ASI_CONSTITUTION        -> +1 CON
+  let asiConBonus = 0;
+  Array.from(xml.getElementsByTagName('element')).forEach(el => {
+    if (el.getAttribute('type') !== 'Ability Score Improvement') return;
+    const reg = (el.getAttribute('registered') || '').toUpperCase();
+    if (!reg.includes('CONSTITUTION')) return;
+    const m = reg.match(/INCREASE_(\d+)/);
+    asiConBonus += m ? parseInt(m[1], 10) : (reg.includes('ASI_CONSTITUTION') ? 1 : 0);
+  });
+
+  const con     = baseCon + asiConBonus;
+  const conMod  = Math.floor((con - 10) / 2);
 
   // ── HP calculation ──
   // Aurora stores one <element type="Level" name="N" rndhp="..."> per class
@@ -64,6 +81,30 @@ function parseAuroraFile(xmlText) {
     parseInt(a.getAttribute('name'), 10) - parseInt(b.getAttribute('name'), 10)
   );
 
+  // ── Class name → hit die size ──
+  // Keyed on uppercase substrings found in Aurora's registered class IDs.
+  const CLASS_HIT_DIE = {
+    BARBARIAN: 12,
+    FIGHTER: 10, PALADIN: 10, RANGER: 10,
+    BARD: 8, CLERIC: 8, DRUID: 8, MONK: 8, ROGUE: 8, WARLOCK: 8, ARTIFICER: 8,
+    SORCERER: 6, WIZARD: 6,
+  };
+
+  const getDieSize = el => {
+    // Only inspect Class and Multiclass children — not Race, Background, etc.
+    // which appear in the same Level element but have unrelated registered IDs.
+    const children = Array.from(el.getElementsByTagName('element'));
+    for (const child of children) {
+      const type = child.getAttribute('type') || '';
+      if (type !== 'Class' && type !== 'Multiclass') continue;
+      const reg = (child.getAttribute('registered') || '').toUpperCase();
+      for (const [cls, die] of Object.entries(CLASS_HIT_DIE)) {
+        if (reg.includes(cls)) return die;
+      }
+    }
+    return null;
+  };
+
   let maxHP     = 0;
   const hitDice = [];
 
@@ -81,14 +122,22 @@ function parseAuroraFile(xmlText) {
       .map(v => parseInt(v.trim(), 10))
       .filter(n => !isNaN(n));
 
+    // D&D 5e rule: the very first character level always uses the maximum
+    // hit die value, not a rolled number. Aurora stores a random roll there
+    // anyway, so we override rolls[0] with the die max for the class that
+    // starts at character level 1.
+    if (startLevel === 1) {
+      const dieMax = getDieSize(el);
+      if (dieMax) rolls[0] = dieMax;
+    }
+
     for (let i = 0; i < Math.min(classLevels, rolls.length); i++) {
       maxHP += rolls[i];
     }
 
-    // First roll is always the max die value for that class (level 1 = max roll)
-    // e.g. 10 -> d10 (Paladin), 8 -> d8 (Warlock), 6 -> d6 (Sorcerer), 12 -> d12 (Barbarian)
-    const dieSize = rolls[0];
-    if ([6, 8, 10, 12].includes(dieSize)) {
+    // Derive die size from the registered class ID, not the roll value
+    const dieSize = getDieSize(el);
+    if (dieSize) {
       hitDice.push({
         id:      crypto.randomUUID(),
         dieType: `d${dieSize}`,
