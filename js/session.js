@@ -266,7 +266,12 @@ function longRest() {
 }
 
 export function initSessionControls() {
-  document.addEventListener('app:rerender', () => renderSession());
+  let _rerenderPending = false;
+  document.addEventListener('app:rerender', () => {
+    if (_rerenderPending) return;
+    _rerenderPending = true;
+    requestAnimationFrame(() => { _rerenderPending = false; renderSession(); });
+  });
 
   document.getElementById('tab-stats').addEventListener('click',     () => switchTab('stats'));
   document.getElementById('tab-inventory').addEventListener('click', () => switchTab('inventory'));

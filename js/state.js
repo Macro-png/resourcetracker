@@ -11,8 +11,33 @@ export function getSelectedCharacter() {
   return state.characters.find(c => c.id === state.selectedCharacterId);
 }
 
+// ── Debounced save ────────────────────────────────────────────────────────────
+// localStorage.setItem blocks the main thread. Debouncing to the next idle
+// period means rapid taps (spell slots, hit dice) only trigger one write
+// instead of one per tap, which is the primary cause of poor INP on Safari.
+let _saveTimer = null;
+
 export function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn('saveState failed:', e);
+    }
+  }, 300);
+}
+
+// Synchronous save for cases where we need the data persisted immediately
+// (e.g. before location.reload() in the import flow).
+export function saveStateNow() {
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn('saveStateNow failed:', e);
+  }
 }
 
 export function loadState() {

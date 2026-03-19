@@ -17,6 +17,22 @@ export function showToast(msg, ms = 1800) {
   setTimeout(() => { t.classList.remove('show'); t.hidden = true; }, ms);
 }
 
+// ─── Deferred rerender ────────────────────────────────────────────────────────
+// Batches multiple rapid state changes (e.g. fast taps) into a single
+// repaint, which is the primary fix for poor INP on Mobile Safari.
+// Instead of dispatching 'app:rerender' directly, callers use this.
+
+let _rerenderScheduled = false;
+
+export function scheduleRerender() {
+  if (_rerenderScheduled) return;
+  _rerenderScheduled = true;
+  requestAnimationFrame(() => {
+    _rerenderScheduled = false;
+    document.dispatchEvent(new CustomEvent('app:rerender'));
+  });
+}
+
 // ─── Swipe-to-delete ─────────────────────────────────────────────────────────
 // Supports both touch (mobile) and mouse drag (PC).
 
@@ -91,24 +107,25 @@ export function makeSwipeable(el, onDelete) {
   });
 
   // ── Mouse events (PC) ──────────────────────────────────────────────────────
+  // Use pointermove/pointerup on the element itself rather than document-level
+  // listeners, which accumulate with every swipeable item and hurt INP.
 
   content.addEventListener('mousedown', e => {
     if (!editMode) return;
     mouseDown = true;
     onDragStart(e.clientX, e.clientY);
-    e.preventDefault(); // prevent text selection while dragging
-  });
-
-  document.addEventListener('mousemove', e => {
-    if (!mouseDown || !editMode) return;
-    onDragMove(e.clientX, e.clientY);
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (!mouseDown) return;
-    mouseDown = false;
-    if (!editMode) return;
-    onDragEnd();
+    e.preventDefault();
+    
+    const onMove = e => { if (mouseDown && editMode) onDragMove(e.clientX, e.clientY); };
+    const onUp   = () => {
+      if (!mouseDown) return;
+      mouseDown = false;
+      if (editMode) onDragEnd();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
   });
 
   // ── Delete button ──────────────────────────────────────────────────────────
