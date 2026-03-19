@@ -104,7 +104,7 @@ export function renderSpellSlots(c) {
   if (!c.spellSlots || c.spellSlots.length === 0) {
     const msg = document.createElement('p');
     msg.className = 'empty-state';
-    msg.textContent = 'No spell slots — tap + Add Spell Slots';
+    msg.textContent = 'No spell slots — tap ✎ then + Add Spell Slots';
     container.appendChild(msg);
     return;
   }

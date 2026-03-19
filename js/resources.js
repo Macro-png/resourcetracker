@@ -14,7 +14,7 @@ export function renderResources(c) {
   if (!c.resources || c.resources.length === 0) {
     const msg = document.createElement('p');
     msg.className = 'empty-state';
-    msg.textContent = 'No resources — tap + Add Resources';
+    msg.textContent = 'No resources — tap ✎ then + Add Resources';
     container.appendChild(msg);
     return;
   }
