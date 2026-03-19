@@ -35,7 +35,7 @@ export function renderHitDice(c) {
   if (c.hitDice.length === 0) {
     const msg = document.createElement('p');
     msg.className = 'empty-state';
-    msg.textContent = 'No hit dice — tap + Add Pool';
+    msg.textContent = 'No hit dice — tap ✎ then + Add Pool';
     container.appendChild(msg);
     return;
   }
