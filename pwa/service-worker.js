@@ -1,22 +1,22 @@
-const CACHE_NAME = 'dnd-tracker-v2';
-const BASE = '/resourcetracker';
+const CACHE_NAME = 'dnd-tracker-v3';
 const ASSETS = [
-  BASE + '/',
-  BASE + '/index.html',
-  BASE + '/style.css',
-  BASE + '/app.js',
-  BASE + '/pwa/manifest.json',
-  BASE + '/js/state.js',
-  BASE + '/js/ui.js',
-  BASE + '/js/hp.js',
-  BASE + '/js/hitdice.js',
-  BASE + '/js/inventory.js',
-  BASE + '/js/session.js',
-  BASE + '/js/modals.js',
-  BASE + '/js/conditions.js',
-  BASE + '/js/resources.js',
-  BASE + '/js/spellslots.js',
-  BASE + '/js/pwa.js',
+  '/',
+  '/index.html',
+  '/style.css',
+  '/app.js',
+  '/pwa/manifest.json',
+  '/js/state.js',
+  '/js/ui.js',
+  '/js/hp.js',
+  '/js/hitdice.js',
+  '/js/inventory.js',
+  '/js/session.js',
+  '/js/modals.js',
+  '/js/conditions.js',
+  '/js/resources.js',
+  '/js/spellslots.js',
+  '/js/pwa.js',
+  '/privacy.html',
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,23 +43,22 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // Navigation requests → serve index.html fallback
-  if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req).catch(() => caches.match(BASE + '/index.html'))
-    );
-    return;
-  }
-
-  // Cache-first for all app assets, network fallback
+  // Cache-first for everything — guarantees offline works after force-close.
+  // Network-first for navigation was the root cause of the Safari offline error.
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        // Dynamically cache anything new (e.g. icons, fonts)
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        }
         return res;
-      }).catch(() => cached);
+      }).catch(() => {
+        // Last resort fallback for navigations
+        if (req.mode === 'navigate') return caches.match('/index.html');
+      });
     })
   );
 });

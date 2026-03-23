@@ -18,9 +18,6 @@ function parseAuroraFile(xmlText) {
   const parseError = xml.querySelector('parsererror');
   if (parseError) throw new Error('Could not parse XML: ' + parseError.textContent.slice(0, 80));
 
-  // ── helpers ──
-  // querySelector treats bare tag names like 'n' as namespace selectors in XML
-  // mode — getElementsByTagName is reliable across all XML parsers.
   const firstText = (parent, tag) => {
     if (!parent) return '';
     const els = parent.getElementsByTagName(tag);
@@ -29,23 +26,15 @@ function parseAuroraFile(xmlText) {
   const firstInt = (parent, tag, fallback = 0) =>
     parseInt(firstText(parent, tag), 10) || fallback;
 
-  // ── identity ──
   const displayProps = xml.getElementsByTagName('display-properties')[0] || null;
   const buildInput   = xml.getElementsByTagName('input')[0]             || null;
 
   const name  = firstText(displayProps, 'name') || firstText(buildInput, 'name') || 'Unknown';
   const level = firstInt(displayProps, 'level', 1);
 
-  // ── ability scores ──
-  // Aurora stores BASE scores in <abilities> — before racial bonuses and ASIs.
-  // We need to sum up ASI bonuses from Ability Score Improvement elements
-  // to get the final score used for HP calculation.
   const abilitiesEl = xml.getElementsByTagName('abilities')[0] || null;
   const baseCon     = firstInt(abilitiesEl, 'constitution', 10);
 
-  // Parse ASI bonuses from registered IDs, e.g.:
-  //   ID_..._ASI_CONSTITUTION_INCREASE_1  -> +1 CON
-  //   ID_INTERNAL_ASI_CONSTITUTION        -> +1 CON
   let asiConBonus = 0;
   Array.from(xml.getElementsByTagName('element')).forEach(el => {
     if (el.getAttribute('type') !== 'Ability Score Improvement') return;
@@ -58,31 +47,13 @@ function parseAuroraFile(xmlText) {
   const con     = baseCon + asiConBonus;
   const conMod  = Math.floor((con - 10) / 2);
 
-  // ── HP calculation ──
-  // Aurora stores one <element type="Level" name="N" rndhp="..."> per class
-  // entry. name="N" is the CHARACTER LEVEL at which that class starts.
-  // The rndhp CSV holds up to 20 pre-rolled values; we consume only as many
-  // as that class actually contributes to the character's current total level.
-  //
-  // Class levels contributed = (next class start level - this class start level)
-  // For the last (or only) class: total level - this class start level + 1
-  //
-  // Example: Paladin(5)/Warlock(2), level 7
-  //   Level element name="1" → Paladin starts at char-level 1, next class at 6
-  //     → contributes 5 levels → take rolls[0..4]
-  //   Level element name="6" → Warlock starts at char-level 6, no next class
-  //     → contributes 7-6+1 = 2 levels → take rolls[0..1]
-
   const levelEls = Array.from(xml.getElementsByTagName('element'))
     .filter(el => el.getAttribute('type') === 'Level' && el.getAttribute('rndhp'));
 
-  // Sort by the numeric "name" attribute (character level where class begins)
   levelEls.sort((a, b) =>
     parseInt(a.getAttribute('name'), 10) - parseInt(b.getAttribute('name'), 10)
   );
 
-  // ── Class name → hit die size ──
-  // Keyed on uppercase substrings found in Aurora's registered class IDs.
   const CLASS_HIT_DIE = {
     BARBARIAN: 12,
     FIGHTER: 10, PALADIN: 10, RANGER: 10,
@@ -91,8 +62,6 @@ function parseAuroraFile(xmlText) {
   };
 
   const getDieSize = el => {
-    // Only inspect Class and Multiclass children — not Race, Background, etc.
-    // which appear in the same Level element but have unrelated registered IDs.
     const children = Array.from(el.getElementsByTagName('element'));
     for (const child of children) {
       const type = child.getAttribute('type') || '';
@@ -122,10 +91,6 @@ function parseAuroraFile(xmlText) {
       .map(v => parseInt(v.trim(), 10))
       .filter(n => !isNaN(n));
 
-    // D&D 5e rule: the very first character level always uses the maximum
-    // hit die value, not a rolled number. Aurora stores a random roll there
-    // anyway, so we override rolls[0] with the die max for the class that
-    // starts at character level 1.
     if (startLevel === 1) {
       const dieMax = getDieSize(el);
       if (dieMax) rolls[0] = dieMax;
@@ -135,7 +100,6 @@ function parseAuroraFile(xmlText) {
       maxHP += rolls[i];
     }
 
-    // Derive die size from the registered class ID, not the roll value
     const dieSize = getDieSize(el);
     if (dieSize) {
       hitDice.push({
@@ -147,13 +111,10 @@ function parseAuroraFile(xmlText) {
     }
   });
 
-  // Add CON modifier for every character level
   maxHP += conMod * level;
   if (maxHP < 1) maxHP = Math.max(1, 8 + conMod);
 
-  // ── Detect caster levels from class display string ──
-  // e.g. "Paladin (5) / Warlock (2)"
-  const classLine   = firstText(displayProps, 'class') || '';
+  const classLine    = firstText(displayProps, 'class') || '';
   const casterLevels = { full: 0, half: 0, pact: 0 };
 
   const FULL_CASTERS = ['Wizard', 'Cleric', 'Druid', 'Sorcerer', 'Bard'];
@@ -170,14 +131,12 @@ function parseAuroraFile(xmlText) {
     else if (PACT_CASTERS.some(c => cls.includes(c))) casterLevels.pact += lvl;
   }
 
-  // ── Spell slots ──
   const spellSlots = buildSpellSlotsFromCasterInfo(
     casterLevels.full,
     casterLevels.half,
     casterLevels.pact
   );
 
-  // ── Currency ──
   const currencyEl = xml.getElementsByTagName('currency')[0] || null;
   const coins = {
     cp: firstInt(currencyEl, 'copper'),
@@ -187,7 +146,6 @@ function parseAuroraFile(xmlText) {
     pp: firstInt(currencyEl, 'platinum'),
   };
 
-  // ── Assemble character object matching tracker's schema ──
   return {
     id:             crypto.randomUUID(),
     name,
@@ -231,7 +189,11 @@ export function initPWA() {
   });
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('pwa/service-worker.js').catch(() => {});
+    // Register from root so the service worker scope covers '/'
+    // If registered from 'pwa/service-worker.js', the default scope would be
+    // 'pwa/' and it would never intercept the top-level navigation request,
+    // causing Safari to show "not connected to the internet" when offline.
+    navigator.serviceWorker.register('/service-worker.js').catch(console.error);
   }
 }
 
@@ -269,22 +231,18 @@ export function initExportImport() {
     const file = ev.target.files[0];
     if (!file) return;
 
-    // Reset so the same file can be re-imported if needed
     ev.target.value = '';
 
     try {
       let parsed;
 
       if (file.name.endsWith('.dnd5e')) {
-        // ── Aurora Builder import ──
         const text = await file.text();
         const char = parseAuroraFile(text);
 
-        // Merge into existing state so other characters are preserved
         const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
         if (!Array.isArray(existing.characters)) existing.characters = [];
 
-        // Replace if a character with the same name already exists, else append
         const idx = existing.characters.findIndex(c => c.name === char.name);
         if (idx !== -1) existing.characters[idx] = char;
         else existing.characters.push(char);
@@ -292,7 +250,6 @@ export function initExportImport() {
         parsed = existing;
 
       } else {
-        // ── Standard tracker JSON import ──
         parsed = JSON.parse(await file.text());
         if (!Array.isArray(parsed.characters)) throw new Error('Invalid format');
       }
