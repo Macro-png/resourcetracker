@@ -3,12 +3,16 @@
 // `state` is a live ES-module binding — reassigning it in loadState() is
 // visible to every importer thanks to ES module live-binding semantics.
 
-export const STORAGE_KEY = 'dndTrackerState';
+export const STORAGE_KEY = "dndTrackerState";
 
-export const state = { characters: [], selectedCharacterId: null, locked: false };
+export const state = {
+  characters: [],
+  selectedCharacterId: null,
+  locked: false,
+};
 
 export function getSelectedCharacter() {
-  return state.characters.find(c => c.id === state.selectedCharacterId);
+  return state.characters.find((c) => c.id === state.selectedCharacterId);
 }
 
 // ── Debounced save ────────────────────────────────────────────────────────────
@@ -24,7 +28,7 @@ export function saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
-      console.warn('saveState failed:', e);
+      console.warn("saveState failed:", e);
     }
   }, 300);
 }
@@ -32,11 +36,14 @@ export function saveState() {
 // Synchronous save for cases where we need the data persisted immediately
 // (e.g. before location.reload() in the import flow).
 export function saveStateNow() {
-  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+  if (_saveTimer) {
+    clearTimeout(_saveTimer);
+    _saveTimer = null;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
-    console.warn('saveStateNow failed:', e);
+    console.warn("saveStateNow failed:", e);
   }
 }
 
@@ -48,6 +55,6 @@ export function loadState() {
       Object.assign(state, parsed);
     }
   } catch (e) {
-    console.warn('Failed to load state:', e);
+    console.warn("Failed to load state:", e);
   }
 }

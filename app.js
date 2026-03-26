@@ -6,15 +6,17 @@
 //   2. Wire up all event listeners (PWA, HP, hitdice, inventory, session, modals)
 //   3. Render the initial screen
 
-import { loadState, state }                    from './js/state.js';
-import { initPWA, initExportImport }           from './js/pwa.js';
-import { initHPControls }                      from './js/hp.js';
-import { initHitDiceControls }                 from './js/hitdice.js';
-import { initInventoryControls }               from './js/inventory.js';
-import { renderCharacterList, renderSession,
-         showCharacterList, showSession,
-         initSessionControls, applyLockUI }   from './js/session.js';
-import { initModals }                          from './js/modals.js';
+import { loadState, state } from './js/state.js';
+import { initPWA, initExportImport } from './js/pwa.js';
+import { initHPControls } from './js/hp.js';
+import { initHitDiceControls } from './js/hitdice.js';
+import { initInventoryControls } from './js/inventory.js';
+import {
+  renderCharacterList, renderSession,
+  showCharacterList, showSession,
+  initSessionControls, applyLockUI
+} from './js/session.js';
+import { initModals } from './js/modals.js';
 
 // 1. Hydrate state
 loadState();

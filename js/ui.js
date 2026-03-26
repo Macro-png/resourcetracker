@@ -9,12 +9,15 @@ export function setEditMode(val) {
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
 export function showToast(msg, ms = 1800) {
-  const t = document.getElementById('toast');
+  const t = document.getElementById("toast");
   if (!t) return;
   t.textContent = msg;
   t.hidden = false;
-  t.classList.add('show');
-  setTimeout(() => { t.classList.remove('show'); t.hidden = true; }, ms);
+  t.classList.add("show");
+  setTimeout(() => {
+    t.classList.remove("show");
+    t.hidden = true;
+  }, ms);
 }
 
 // ─── Deferred rerender ────────────────────────────────────────────────────────
@@ -29,7 +32,7 @@ export function scheduleRerender() {
   _rerenderScheduled = true;
   requestAnimationFrame(() => {
     _rerenderScheduled = false;
-    document.dispatchEvent(new CustomEvent('app:rerender'));
+    document.dispatchEvent(new CustomEvent("app:rerender"));
   });
 }
 
@@ -37,28 +40,31 @@ export function scheduleRerender() {
 // Supports both touch (mobile) and mouse drag (PC).
 
 export function makeSwipeable(el, onDelete) {
-  el.classList.add('swipe-item');
+  el.classList.add("swipe-item");
 
-  const bg = document.createElement('div');
-  bg.className = 'swipe-delete-bg';
-  bg.textContent = 'Delete';
+  const bg = document.createElement("div");
+  bg.className = "swipe-delete-bg";
+  bg.textContent = "Delete";
 
-  const content = document.createElement('div');
-  content.className = 'swipe-content';
+  const content = document.createElement("div");
+  content.className = "swipe-content";
   while (el.firstChild) content.appendChild(el.firstChild);
 
   el.appendChild(bg);
   el.appendChild(content);
 
-  let startX = 0, startY = 0, tracking = false, mouseDown = false;
-  const SWIPE_WIDTH     = 56;
+  let startX = 0,
+    startY = 0,
+    tracking = false,
+    mouseDown = false;
+  const SWIPE_WIDTH = 56;
   const SWIPE_THRESHOLD = 20;
 
   // ── Shared drag logic ──────────────────────────────────────────────────────
 
   function onDragStart(clientX, clientY) {
-    startX   = clientX;
-    startY   = clientY;
+    startX = clientX;
+    startY = clientY;
     tracking = false;
   }
 
@@ -68,40 +74,48 @@ export function makeSwipeable(el, onDelete) {
     if (!tracking && Math.abs(dy) > Math.abs(dx)) return;
     tracking = true;
     const clamped = Math.max(-SWIPE_WIDTH, Math.min(0, dx));
-    content.style.transition = 'none';
-    content.style.transform  = `translateX(${clamped}px)`;
-    bg.style.transition      = 'none';
-    bg.style.opacity         = String(Math.min(1, Math.abs(clamped) / SWIPE_WIDTH));
+    content.style.transition = "none";
+    content.style.transform = `translateX(${clamped}px)`;
+    bg.style.transition = "none";
+    bg.style.opacity = String(Math.min(1, Math.abs(clamped) / SWIPE_WIDTH));
   }
 
   function onDragEnd() {
-    content.style.transition = 'transform 0.2s ease';
-    bg.style.transition      = 'opacity 0.15s ease';
+    content.style.transition = "transform 0.2s ease";
+    bg.style.transition = "opacity 0.15s ease";
     const x = new DOMMatrix(getComputedStyle(content).transform).m41;
     if (x < -SWIPE_THRESHOLD) {
-      el.classList.add('swiped');
+      el.classList.add("swiped");
       content.style.transform = `translateX(-${SWIPE_WIDTH}px)`;
-      bg.style.opacity = '1';
+      bg.style.opacity = "1";
     } else {
-      el.classList.remove('swiped');
-      content.style.transform = '';
-      bg.style.opacity = '0';
+      el.classList.remove("swiped");
+      content.style.transform = "";
+      bg.style.opacity = "0";
     }
   }
 
   // ── Touch events ───────────────────────────────────────────────────────────
 
-  content.addEventListener('touchstart', e => {
-    if (!editMode) return;
-    onDragStart(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive: true });
+  content.addEventListener(
+    "touchstart",
+    (e) => {
+      if (!editMode) return;
+      onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+    },
+    { passive: true },
+  );
 
-  content.addEventListener('touchmove', e => {
-    if (!editMode) return;
-    onDragMove(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive: true });
+  content.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!editMode) return;
+      onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+    },
+    { passive: true },
+  );
 
-  content.addEventListener('touchend', () => {
+  content.addEventListener("touchend", () => {
     if (!editMode) return;
     onDragEnd();
   });
@@ -110,48 +124,53 @@ export function makeSwipeable(el, onDelete) {
   // Use pointermove/pointerup on the element itself rather than document-level
   // listeners, which accumulate with every swipeable item and hurt INP.
 
-  content.addEventListener('mousedown', e => {
+  content.addEventListener("mousedown", (e) => {
     if (!editMode) return;
     mouseDown = true;
     onDragStart(e.clientX, e.clientY);
     e.preventDefault();
-    
-    const onMove = e => { if (mouseDown && editMode) onDragMove(e.clientX, e.clientY); };
-    const onUp   = () => {
+
+    const onMove = (e) => {
+      if (mouseDown && editMode) onDragMove(e.clientX, e.clientY);
+    };
+    const onUp = () => {
       if (!mouseDown) return;
       mouseDown = false;
       if (editMode) onDragEnd();
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup',   onUp);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
     };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   });
 
   // ── Delete button ──────────────────────────────────────────────────────────
 
-  bg.addEventListener('click', () => {
+  bg.addEventListener("click", () => {
     if (!editMode) return;
-    el.style.transition = 'opacity 0.2s, max-height 0.25s';
-    el.style.overflow   = 'hidden';
-    el.style.maxHeight  = el.offsetHeight + 'px';
-    el.style.opacity    = '1';
-    requestAnimationFrame(() => { el.style.maxHeight = '0'; el.style.opacity = '0'; });
+    el.style.transition = "opacity 0.2s, max-height 0.25s";
+    el.style.overflow = "hidden";
+    el.style.maxHeight = el.offsetHeight + "px";
+    el.style.opacity = "1";
+    requestAnimationFrame(() => {
+      el.style.maxHeight = "0";
+      el.style.opacity = "0";
+    });
     setTimeout(onDelete, 260);
   });
 
   // ── Close on outside interaction ───────────────────────────────────────────
 
-  const closeIfOutside = e => {
+  const closeIfOutside = (e) => {
     if (!editMode) return;
-    if (!el.contains(e.target) && el.classList.contains('swiped')) {
-      el.classList.remove('swiped');
-      content.style.transition = 'transform 0.2s ease';
-      content.style.transform  = '';
-      bg.style.opacity         = '0';
+    if (!el.contains(e.target) && el.classList.contains("swiped")) {
+      el.classList.remove("swiped");
+      content.style.transition = "transform 0.2s ease";
+      content.style.transform = "";
+      bg.style.opacity = "0";
     }
   };
 
-  document.addEventListener('touchstart', closeIfOutside, { passive: true });
-  document.addEventListener('mousedown',  closeIfOutside);
+  document.addEventListener("touchstart", closeIfOutside, { passive: true });
+  document.addEventListener("mousedown", closeIfOutside);
 }

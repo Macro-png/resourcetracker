@@ -3,56 +3,60 @@
 // (slot-box) UI identical to spell slots; those with max >= 4 switch to a
 // counter (−  n/max  +) layout automatically.
 
-import { saveState }               from './state.js';
-import { editMode, makeSwipeable } from './ui.js';
+import { saveState } from "./state.js";
+import { editMode, makeSwipeable } from "./ui.js";
 
 export function renderResources(c) {
-  const container = document.getElementById('resources-container');
-  const template  = document.getElementById('resource-template');
-  container.innerHTML = '';
+  const container = document.getElementById("resources-container");
+  const template = document.getElementById("resource-template");
+  container.innerHTML = "";
 
   if (!c.resources || c.resources.length === 0) {
-    const msg = document.createElement('p');
-    msg.className = 'empty-state';
-    msg.textContent = 'No resources — tap ✎ then + Add Resources';
+    const msg = document.createElement("p");
+    msg.className = "empty-state";
+    msg.textContent = "No resources — tap ✎ then + Add Resources";
     container.appendChild(msg);
     return;
   }
 
-  c.resources.forEach(r => {
+  c.resources.forEach((r) => {
     const el = template.content.firstElementChild.cloneNode(true);
     el.querySelector('[data-key="label"]').textContent = r.name;
 
     const controls = el.querySelector('[data-key="controls"]');
-    controls.innerHTML = '';
+    controls.innerHTML = "";
 
     // Shared helper — save and trigger a full re-render
     const rerender = () => {
       saveState();
-      document.dispatchEvent(new CustomEvent('app:rerender'));
+      document.dispatchEvent(new CustomEvent("app:rerender"));
     };
 
     if (r.max <= 3) {
       // ── Checkbox mode (max 1–3) ────────────────────────────────────────────
-      controls.className = 'spellslot-controls resource-controls';
+      controls.className = "spellslot-controls resource-controls";
 
       for (let i = 0; i < r.max; i++) {
-        const label = document.createElement('label');
-        label.className = 'slot-toggle';
+        const label = document.createElement("label");
+        label.className = "slot-toggle";
         label.title = `${r.name} use ${i + 1}`;
 
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.className = 'slot-checkbox';
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.className = "slot-checkbox";
         // Checked = spent (purple fills from left)
-        cb.checked = i < (r.max - (r.current || 0));
-        cb.setAttribute('aria-label', `${r.name} ${i + 1}`);
-        cb.addEventListener('change', () => {
-          if (c.locked) { cb.checked = i < (r.max - (r.current || 0)); return; }
+        cb.checked = i < r.max - (r.current || 0);
+        cb.setAttribute("aria-label", `${r.name} ${i + 1}`);
+        cb.addEventListener("change", () => {
+          if (c.locked) {
+            cb.checked = i < r.max - (r.current || 0);
+            return;
+          }
           if (editMode) {
             r.max--;
             r.current = Math.min(r.current || 0, r.max);
-            if (r.max === 0) c.resources = c.resources.filter(x => x.id !== r.id);
+            if (r.max === 0)
+              c.resources = c.resources.filter((x) => x.id !== r.id);
           } else {
             r.current = cb.checked
               ? Math.max(0, (r.current || 0) - 1)
@@ -61,69 +65,79 @@ export function renderResources(c) {
           rerender();
         });
 
-        const box = document.createElement('span');
-        box.className = 'slot-box resource-slot-box';
+        const box = document.createElement("span");
+        box.className = "slot-box resource-slot-box";
         label.appendChild(cb);
         label.appendChild(box);
         controls.appendChild(label);
       }
 
       // + add box — clicking at max 3 pushes to 4 which triggers counter mode
-      const addLabel = document.createElement('label');
-      addLabel.className = 'slot-toggle slot-add-toggle';
-      addLabel.title = 'Add one more';
-      const addBox = document.createElement('span');
-      addBox.className = 'slot-box slot-add-box';
-      addBox.textContent = '+';
+      const addLabel = document.createElement("label");
+      addLabel.className = "slot-toggle slot-add-toggle";
+      addLabel.title = "Add one more";
+      const addBox = document.createElement("span");
+      addBox.className = "slot-box slot-add-box";
+      addBox.textContent = "+";
       addLabel.appendChild(addBox);
-      addLabel.addEventListener('click', () => {
+      addLabel.addEventListener("click", () => {
         if (!editMode) return;
         r.max++;
         r.current = Math.min(r.max, (r.current || 0) + 1);
         rerender();
       });
       controls.appendChild(addLabel);
-
     } else {
       // ── Counter mode (max >= 4) ────────────────────────────────────────────
-      controls.className = 'spellslot-controls resource-controls';
+      controls.className = "spellslot-controls resource-controls";
 
-      const flash = box => {
-        box.classList.add('flash');
-        setTimeout(() => box.classList.remove('flash'), 200);
+      const flash = (box) => {
+        box.classList.add("flash");
+        setTimeout(() => box.classList.remove("flash"), 200);
       };
 
-      const makeBox = text => {
-        const label = document.createElement('label');
-        label.className = 'slot-toggle';
-        const box = document.createElement('span');
-        box.className = 'slot-box resource-counter-box';
+      const makeBox = (text) => {
+        const label = document.createElement("label");
+        label.className = "slot-toggle";
+        const box = document.createElement("span");
+        box.className = "slot-box resource-counter-box";
         box.textContent = text;
         label.appendChild(box);
         return { label, box };
       };
 
-      const { label: decLabel, box: decBox } = makeBox('−');
+      const { label: decLabel, box: decBox } = makeBox("−");
       const { label: valLabel, box: valBox } = makeBox(`${r.current}/${r.max}`);
-      const { label: incLabel, box: incBox } = makeBox('+');
+      const { label: incLabel, box: incBox } = makeBox("+");
 
       // Value display is not interactive
-      valLabel.style.cursor = 'default';
-      valLabel.style.pointerEvents = 'none';
+      valLabel.style.cursor = "default";
+      valLabel.style.pointerEvents = "none";
 
-      decLabel.addEventListener('click', () => {
+      decLabel.addEventListener("click", () => {
         if (c.locked) return;
-        if (editMode) { if (r.max <= 1) return; r.max--; r.current = Math.min(r.current, r.max); }
-        else          { if (r.current <= 0) return; r.current = Math.max(0, r.current - 1); }
+        if (editMode) {
+          if (r.max <= 1) return;
+          r.max--;
+          r.current = Math.min(r.current, r.max);
+        } else {
+          if (r.current <= 0) return;
+          r.current = Math.max(0, r.current - 1);
+        }
         flash(decBox);
         valBox.textContent = `${r.current}/${r.max}`;
         setTimeout(rerender, 210);
       });
 
-      incLabel.addEventListener('click', () => {
+      incLabel.addEventListener("click", () => {
         if (c.locked) return;
-        if (editMode) { r.max++; r.current = Math.min(r.current, r.max); }
-        else          { if (r.current >= r.max) return; r.current = Math.min(r.max, r.current + 1); }
+        if (editMode) {
+          r.max++;
+          r.current = Math.min(r.current, r.max);
+        } else {
+          if (r.current >= r.max) return;
+          r.current = Math.min(r.max, r.current + 1);
+        }
         flash(incBox);
         valBox.textContent = `${r.current}/${r.max}`;
         setTimeout(rerender, 210);
@@ -135,9 +149,9 @@ export function renderResources(c) {
     }
 
     makeSwipeable(el, () => {
-      c.resources = c.resources.filter(x => x.id !== r.id);
+      c.resources = c.resources.filter((x) => x.id !== r.id);
       saveState();
-      document.dispatchEvent(new CustomEvent('app:rerender'));
+      document.dispatchEvent(new CustomEvent("app:rerender"));
     });
 
     container.appendChild(el);
